@@ -24,8 +24,35 @@
     .container {
       flex: 1;
       display: flex;
-      flex-direction: column;
       padding: 15px;
+      gap: 15px;
+    }
+    .notes-list {
+      width: 200px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .notes-list h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .note-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: #eee;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .note-item:hover {
+      background: #ddd;
+    }
+    .editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     input[type="text"] {
       padding: 10px;
@@ -56,6 +83,7 @@
       transition: 0.2s;
     }
     button:hover { opacity: 0.8; }
+    .new { background: lightblue; }
     .save { background: lightgreen; }
     .fullscreen { background: orange; color: white; }
     footer {
@@ -70,34 +98,73 @@
 <body>
   <header>LocalNotes</header>
   <div class="container">
-    <input type="text" id="title" placeholder="Enter note title...">
-    <textarea id="note" placeholder="Write your note here..."></textarea>
-    <div class="buttons">
-      <button class="save" onclick="saveNote()">💾 Save Note</button>
-      <button class="fullscreen" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <div class="notes-list">
+      <h3>My Notes</h3>
+      <div id="notes"></div>
+    </div>
+    <div class="editor">
+      <input type="text" id="title" placeholder="Enter note title...">
+      <textarea id="note" placeholder="Write your note here..."></textarea>
+      <div class="buttons">
+        <button class="new" onclick="newNote()">➕ New Note</button>
+        <button class="save" onclick="saveNote()">💾 Save Note</button>
+        <button class="fullscreen" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+      </div>
     </div>
   </div>
   <footer>Made by Aryan Giri</footer>
 
   <script>
-    // Load saved note
+    let currentNoteId = null;
+
     window.onload = () => {
-      const savedTitle = localStorage.getItem('noteTitle');
-      const savedContent = localStorage.getItem('noteContent');
-      if (savedTitle) document.getElementById('title').value = savedTitle;
-      if (savedContent) document.getElementById('note').value = savedContent;
+      loadNotes();
+    }
+
+    function loadNotes() {
+      const notesContainer = document.getElementById('notes');
+      notesContainer.innerHTML = '';
+      const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+      notes.forEach((note, index) => {
+        const div = document.createElement('div');
+        div.className = 'note-item';
+        div.innerText = note.title || 'Untitled';
+        div.onclick = () => openNote(index);
+        notesContainer.appendChild(div);
+      });
     }
 
     function saveNote() {
       const title = document.getElementById('title').value;
-      const note = document.getElementById('note').value;
+      const content = document.getElementById('note').value;
       if (!title.trim()) {
         alert("Please enter a title for your note");
         return;
       }
-      localStorage.setItem('noteTitle', title);
-      localStorage.setItem('noteContent', note);
-      alert("Note saved locally!");
+      let notes = JSON.parse(localStorage.getItem('notes') || '[]');
+      if (currentNoteId === null) {
+        notes.push({ title, content });
+        currentNoteId = notes.length - 1;
+      } else {
+        notes[currentNoteId] = { title, content };
+      }
+      localStorage.setItem('notes', JSON.stringify(notes));
+      loadNotes();
+      alert("Note saved!");
+    }
+
+    function openNote(index) {
+      const notes = JSON.parse(localStorage.getItem('notes') || '[]');
+      const note = notes[index];
+      document.getElementById('title').value = note.title;
+      document.getElementById('note').value = note.content;
+      currentNoteId = index;
+    }
+
+    function newNote() {
+      document.getElementById('title').value = '';
+      document.getElementById('note').value = '';
+      currentNoteId = null;
     }
 
     function toggleFullscreen() {
