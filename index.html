@@ -3,159 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LocalNotes 📝</title>
+  <title>LocalNotes - Made by Aryan Giri</title>
   <style>
     body {
-      font-family: "Courier New", monospace;
-      background: #0f172a;
-      color: #f8fafc;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
       margin: 0;
-    }
-
-    .container {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 12px;
-      width: 350px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 15px;
-      color: #38bdf8;
-    }
-
-    #notes {
-      height: 300px;
-      overflow-y: auto;
-      background: #0f172a;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-
-    .note {
-      background: #334155;
-      padding: 8px;
-      border-radius: 6px;
-      margin-bottom: 8px;
-      position: relative;
-    }
-
-    .note button {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      background: transparent;
-      border: none;
-      color: #f87171;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .input-box {
+      padding: 0;
       display: flex;
-      gap: 5px;
+      flex-direction: column;
+      height: 100vh;
     }
-
-    .input-box input {
-      flex: 1;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-    }
-
-    .input-box button {
-      background: #3b82f6;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
+    header {
+      background: #333;
       color: white;
-      cursor: pointer;
-    }
-
-    .controls {
-      margin-top: 10px;
+      padding: 10px;
       text-align: center;
+      font-size: 20px;
     }
-
-    .controls button {
-      background: #ef4444;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      color: white;
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 15px;
+    }
+    input[type="text"] {
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    textarea {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+    }
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 14px;
       cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      transition: 0.2s;
+    }
+    button:hover { opacity: 0.8; }
+    .save { background: lightgreen; }
+    .fullscreen { background: orange; color: white; }
+    footer {
+      text-align: center;
+      padding: 8px;
+      background: #222;
+      color: #ccc;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
+  <header>LocalNotes</header>
   <div class="container">
-    <h1>LocalNotes</h1>
-    <div id="notes"></div>
-    <div class="input-box">
-      <input type="text" id="noteInput" placeholder="Type your note..." />
-      <button onclick="addNote()">Add</button>
-    </div>
-    <div class="controls">
-      <button onclick="clearNotes()">🔥 Clear All</button>
+    <input type="text" id="title" placeholder="Enter note title...">
+    <textarea id="note" placeholder="Write your note here..."></textarea>
+    <div class="buttons">
+      <button class="save" onclick="saveNote()">💾 Save Note</button>
+      <button class="fullscreen" onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
   </div>
+  <footer>Made by Aryan Giri</footer>
 
   <script>
-    function loadNotes() {
-      let notes = JSON.parse(localStorage.getItem("notes")) || [];
-      const container = document.getElementById("notes");
-      container.innerHTML = "";
-
-      notes.forEach((note, index) => {
-        let div = document.createElement("div");
-        div.className = "note";
-        div.innerHTML = `
-          ${note.text}
-          <button onclick="deleteNote(${index})">x</button>
-        `;
-        container.appendChild(div);
-      });
+    // Load saved note
+    window.onload = () => {
+      const savedTitle = localStorage.getItem('noteTitle');
+      const savedContent = localStorage.getItem('noteContent');
+      if (savedTitle) document.getElementById('title').value = savedTitle;
+      if (savedContent) document.getElementById('note').value = savedContent;
     }
 
-    function addNote() {
-      let input = document.getElementById("noteInput");
-      let text = input.value.trim();
-      if (text === "") return;
-
-      let notes = JSON.parse(localStorage.getItem("notes")) || [];
-      notes.push({ text });
-
-      // keep only last 30 notes
-      if (notes.length > 30) {
-        notes.shift();
+    function saveNote() {
+      const title = document.getElementById('title').value;
+      const note = document.getElementById('note').value;
+      if (!title.trim()) {
+        alert("Please enter a title for your note");
+        return;
       }
-
-      localStorage.setItem("notes", JSON.stringify(notes));
-      input.value = "";
-      loadNotes();
+      localStorage.setItem('noteTitle', title);
+      localStorage.setItem('noteContent', note);
+      alert("Note saved locally!");
     }
 
-    function deleteNote(index) {
-      let notes = JSON.parse(localStorage.getItem("notes")) || [];
-      notes.splice(index, 1);
-      localStorage.setItem("notes", JSON.stringify(notes));
-      loadNotes();
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
     }
-
-    function clearNotes() {
-      localStorage.removeItem("notes");
-      loadNotes();
-    }
-
-    // Load notes on startup
-    loadNotes();
   </script>
 </body>
 </html>
