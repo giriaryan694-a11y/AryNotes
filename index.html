@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocalNotes 📝</title>
+  <style>
+    body {
+      font-family: "Courier New", monospace;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+      width: 350px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 15px;
+      color: #38bdf8;
+    }
+
+    #notes {
+      height: 300px;
+      overflow-y: auto;
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .note {
+      background: #334155;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .note button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: transparent;
+      border: none;
+      color: #f87171;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .input-box {
+      display: flex;
+      gap: 5px;
+    }
+
+    .input-box input {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    .input-box button {
+      background: #3b82f6;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .controls {
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .controls button {
+      background: #ef4444;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LocalNotes</h1>
+    <div id="notes"></div>
+    <div class="input-box">
+      <input type="text" id="noteInput" placeholder="Type your note..." />
+      <button onclick="addNote()">Add</button>
+    </div>
+    <div class="controls">
+      <button onclick="clearNotes()">🔥 Clear All</button>
+    </div>
+  </div>
+
+  <script>
+    function loadNotes() {
+      let notes = JSON.parse(localStorage.getItem("notes")) || [];
+      const container = document.getElementById("notes");
+      container.innerHTML = "";
+
+      notes.forEach((note, index) => {
+        let div = document.createElement("div");
+        div.className = "note";
+        div.innerHTML = `
+          ${note.text}
+          <button onclick="deleteNote(${index})">x</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addNote() {
+      let input = document.getElementById("noteInput");
+      let text = input.value.trim();
+      if (text === "") return;
+
+      let notes = JSON.parse(localStorage.getItem("notes")) || [];
+      notes.push({ text });
+
+      // keep only last 30 notes
+      if (notes.length > 30) {
+        notes.shift();
+      }
+
+      localStorage.setItem("notes", JSON.stringify(notes));
+      input.value = "";
+      loadNotes();
+    }
+
+    function deleteNote(index) {
+      let notes = JSON.parse(localStorage.getItem("notes")) || [];
+      notes.splice(index, 1);
+      localStorage.setItem("notes", JSON.stringify(notes));
+      loadNotes();
+    }
+
+    function clearNotes() {
+      localStorage.removeItem("notes");
+      loadNotes();
+    }
+
+    // Load notes on startup
+    loadNotes();
+  </script>
+</body>
+</html>
