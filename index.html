@@ -149,12 +149,25 @@
   .write-tabs button.active{background:var(--accent); color:var(--panel); border-color:var(--accent);}
 
   .content-area{flex:1; position:relative; min-height:0;}
-  textarea#note{
-    width:100%; height:100%; padding:12px; font-size:14.5px; line-height:1.55; border:1px solid var(--border);
-    border-radius:6px; background:var(--panel); color:var(--text); resize:none; font-family:var(--mono);
+  .editor-pane{
+    display:flex; width:100%; height:100%; border:1px solid var(--border); border-radius:6px;
+    background:var(--panel); overflow:hidden;
   }
-  textarea#note:focus{outline:none; border-color:var(--accent);}
-  textarea#note.dragging{border-color:var(--accent-2); border-style:dashed; background:var(--panel-2);}
+  .editor-pane:focus-within{border-color:var(--accent);}
+  .line-gutter{
+    flex-shrink:0; width:44px; padding:12px 8px 12px 0; text-align:right; overflow:hidden;
+    font-family:var(--mono); font-size:14.5px; line-height:1.55; color:var(--text-dim);
+    background:var(--panel-2); border-right:1px solid var(--border); user-select:none;
+  }
+  .line-gutter div{white-space:pre;}
+  textarea#note{
+    flex:1; width:100%; height:100%; padding:12px; font-size:14.5px; line-height:1.55; border:none;
+    background:var(--panel); color:var(--text); resize:none; font-family:var(--mono);
+    white-space:pre; overflow-wrap:normal; overflow-x:auto;
+  }
+  textarea#note:focus{outline:none;}
+  textarea#note.dragging{background:var(--panel-2);}
+  .editor-pane.dragging{border-color:var(--accent-2); border-style:dashed;}
   .drop-hint{
     position:absolute; inset:0; display:none; align-items:center; justify-content:center;
     background:rgba(63,167,150,0.08); border:2px dashed var(--accent-2); border-radius:6px;
@@ -162,11 +175,20 @@
   }
   .drop-hint.show{display:flex;}
 
-  #preview{
-    width:100%; height:100%; overflow-y:auto; padding:14px; border:1px solid var(--border);
-    border-radius:6px; background:var(--panel); font-size:14px; line-height:1.6; display:none;
+  .preview-pane{
+    display:none; width:100%; height:100%; border:1px solid var(--border); border-radius:6px;
+    background:var(--panel); overflow:hidden;
   }
-  #preview.show{display:block;}
+  .preview-pane.show{display:flex;}
+  .preview-gutter{
+    flex-shrink:0; width:44px; padding:14px 8px 14px 0; text-align:right; overflow:hidden;
+    font-family:var(--mono); font-size:12.5px; line-height:1.6; color:var(--text-dim);
+    background:var(--panel-2); border-right:1px solid var(--border); user-select:none;
+  }
+  .preview-gutter div{white-space:pre;}
+  #preview{
+    flex:1; overflow-y:auto; padding:14px; font-size:14px; line-height:1.6;
+  }
   #preview img{max-width:100%; border-radius:5px; margin:6px 0; border:1px solid var(--border); display:block;}
   #preview code{background:var(--panel-2); padding:1px 5px; border-radius:3px; font-family:var(--mono); font-size:.92em;}
   #preview p{margin:0 0 10px;}
@@ -254,9 +276,15 @@
       <input type="text" id="title" placeholder="Untitled note">
       <input type="text" id="tags" placeholder="tags: recon, smb, critical (comma separated)">
       <div class="content-area">
-        <textarea id="note" placeholder="Findings, commands, output, evidence notes… drag & drop images here."></textarea>
+        <div class="editor-pane" id="editorPane">
+          <div class="line-gutter" id="lineGutter"><div>1</div></div>
+          <textarea id="note" placeholder="Findings, commands, output, evidence notes… drag & drop images here." spellcheck="false"></textarea>
+        </div>
         <div class="drop-hint" id="dropHint">drop image to embed — ![name](inline)</div>
-        <div id="preview"></div>
+        <div class="preview-pane" id="previewPane">
+          <div class="preview-gutter" id="previewGutter"><div>1</div></div>
+          <div id="preview"></div>
+        </div>
       </div>
       <div class="meta-line" id="metaLine"></div>
     </div>
@@ -468,6 +496,7 @@
     document.getElementById('folderSelect').value = currentFolderId !== 'ALL' ? currentFolderId : (folders[0] ? folders[0].id : '');
     document.getElementById('deleteBtn').disabled = true;
     setPreview(false);
+    updateLineNumbers();
   }
 
   function openNote(id){
@@ -483,6 +512,7 @@
     document.getElementById('deleteBtn').disabled = false;
     renderNotes();
     setPreview(false);
+    updateLineNumbers();
   }
 
   document.getElementById('newBtn').addEventListener('click', clearEditor);
@@ -542,8 +572,8 @@ ${content}
     previewMode = on;
     document.getElementById('writeTab').classList.toggle('active', !on);
     document.getElementById('previewTab').classList.toggle('active', on);
-    document.getElementById('note').style.display = on ? 'none' : 'block';
-    document.getElementById('preview').classList.toggle('show', on);
+    document.getElementById('editorPane').style.display = on ? 'none' : 'flex';
+    document.getElementById('previewPane').classList.toggle('show', on);
     if(on) renderPreview();
   }
   document.getElementById('writeTab').addEventListener('click', ()=> setPreview(false));
@@ -561,31 +591,59 @@ ${content}
     return html;
   }
   function renderPreview(){
-    document.getElementById('preview').innerHTML = mdToHtml(document.getElementById('note').value || '*Nothing to preview yet.*');
+    const raw = document.getElementById('note').value;
+    document.getElementById('preview').innerHTML = mdToHtml(raw || '*Nothing to preview yet.*');
+    updatePreviewGutter(raw);
   }
+
+  // ---------- Line numbers (write mode + preview mode) ----------
+  const lineGutter = document.getElementById('lineGutter');
+  const previewGutter = document.getElementById('previewGutter');
+
+  function numbersHtml(count){
+    let out = '';
+    for(let i = 1; i <= count; i++) out += `<div>${i}</div>`;
+    return out;
+  }
+  function updateLineNumbers(){
+    const lines = (document.getElementById('note').value.match(/\n/g) || []).length + 1;
+    lineGutter.innerHTML = numbersHtml(lines);
+  }
+  function updatePreviewGutter(raw){
+    const lines = ((raw||'').match(/\n/g) || []).length + 1;
+    previewGutter.innerHTML = numbersHtml(lines);
+  }
+
+  const noteEl = document.getElementById('note');
+  noteEl.addEventListener('input', updateLineNumbers);
+  noteEl.addEventListener('scroll', ()=>{ lineGutter.scrollTop = noteEl.scrollTop; });
+  document.getElementById('preview').addEventListener('scroll', function(){
+    previewGutter.scrollTop = this.scrollTop;
+  });
 
   // ---------- Drag & drop images into note (GitHub-style inline embed) ----------
   const textarea = document.getElementById('note');
   const dropHint = document.getElementById('dropHint');
+  const editorPane = document.getElementById('editorPane');
 
   ['dragenter','dragover'].forEach(evt=>{
     textarea.addEventListener(evt, (e)=>{
       e.preventDefault();
       if(Array.from(e.dataTransfer.items||[]).some(it=>it.kind==='file')){
-        textarea.classList.add('dragging');
+        editorPane.classList.add('dragging');
         dropHint.classList.add('show');
       }
     });
   });
   ['dragleave','dragend'].forEach(evt=>{
     textarea.addEventListener(evt, ()=>{
-      textarea.classList.remove('dragging');
+      editorPane.classList.remove('dragging');
       dropHint.classList.remove('show');
     });
   });
   textarea.addEventListener('drop', (e)=>{
     e.preventDefault();
-    textarea.classList.remove('dragging');
+    editorPane.classList.remove('dragging');
     dropHint.classList.remove('show');
     const files = Array.from(e.dataTransfer.files || []).filter(f=>f.type.startsWith('image/'));
     if(!files.length) return;
@@ -596,6 +654,7 @@ ${content}
         const tag = `![${file.name}](${reader.result})\n`;
         const val = textarea.value;
         textarea.value = val.slice(0, cursorPos) + tag + val.slice(cursorPos);
+        updateLineNumbers();
       };
       reader.readAsDataURL(file);
     });
