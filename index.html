@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AryNotes — Engagement Notebook</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <style>
   :root{
     --bg:#0d1117; --panel:#141b24; --panel-2:#0f1620; --border:#232d3a;
@@ -29,6 +30,14 @@
     display:flex; flex-direction:column;
     transition:background .2s, color .2s;
   }
+
+  .reconnect-bar{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 18px; background:var(--accent); color:var(--panel); font-size:12.5px;
+    font-family:var(--mono); flex-shrink:0;
+  }
+  .reconnect-bar.show{display:flex;}
+  .reconnect-bar button{background:var(--panel); color:var(--text); border:none;}
 
   header{
     display:flex; align-items:center; justify-content:space-between;
@@ -61,29 +70,30 @@
   button.primary:hover{opacity:.88; color:var(--panel);}
   button.ghost-danger:hover{border-color:var(--danger); color:var(--danger);}
   button:disabled{opacity:.4; cursor:not-allowed;}
+  button.icon-btn{padding:7px 9px; font-size:15px; line-height:1;}
   input[type=file]{display:none;}
 
-  /* ---- Mode picker ---- */
-  .mode-picker{position:relative;}
-  .mode-trigger{
+  /* ---- Dropdown panels (mode picker + settings) ---- */
+  .dropdown-wrap{position:relative;}
+  .dropdown-trigger{
     display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12.5px;
     background:var(--panel-2); border:1px solid var(--border);
   }
-  .mode-trigger .dot{width:8px; height:8px; border-radius:50%; background:var(--accent-2);}
-  .mode-trigger .chev{font-size:10px; color:var(--text-dim);}
-  .mode-panel{
-    display:none; position:absolute; top:calc(100% + 6px); right:0; width:300px;
+  .dropdown-trigger .dot{width:8px; height:8px; border-radius:50%; background:var(--accent-2);}
+  .dropdown-trigger .chev{font-size:10px; color:var(--text-dim);}
+  .dropdown-panel{
+    display:none; position:absolute; top:calc(100% + 6px); right:0; width:310px;
     background:var(--panel); border:1px solid var(--border); border-radius:8px;
     box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:50; overflow:hidden;
   }
-  .mode-panel.open{display:block;}
-  .mode-panel-header{
-    padding:10px 12px; font-family:var(--mono); font-size:10.5px; text-transform:uppercase;
-    letter-spacing:.08em; color:var(--text-dim); border-bottom:1px solid var(--border);
+  .dropdown-panel.open{display:block;}
+  .panel-section-header{
+    padding:9px 12px 5px; font-family:var(--mono); font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--text-dim);
   }
-  .mode-list{max-height:260px; overflow-y:auto;}
+  .mode-list{max-height:130px; overflow-y:auto;}
   .mode-option{
-    display:flex; align-items:center; gap:9px; padding:9px 12px; cursor:pointer;
+    display:flex; align-items:center; gap:9px; padding:8px 12px; cursor:pointer;
     border-bottom:1px solid var(--border);
   }
   .mode-option:last-child{border-bottom:none;}
@@ -98,11 +108,23 @@
     border:none; background:transparent; color:var(--text-dim); font-size:12px; padding:2px 4px; flex-shrink:0;
   }
   .mode-option .m-del:hover{color:var(--danger);}
-  .mode-panel-footer{
+  .mode-empty{padding:10px 12px; font-size:11.5px; color:var(--text-dim); line-height:1.4;}
+  .panel-divider{border-top:1px solid var(--border);}
+  .panel-footer{
     display:flex; flex-direction:column; gap:5px; padding:10px 12px; border-top:1px solid var(--border);
     background:var(--panel-2);
   }
-  .mode-panel-footer button{width:100%; text-align:left; font-size:12.5px;}
+  .panel-footer button{width:100%; text-align:left; font-size:12.5px;}
+
+  /* ---- Settings panel specifics ---- */
+  .settings-body{padding:12px; display:flex; flex-direction:column; gap:10px;}
+  .storage-status{
+    font-family:var(--mono); font-size:11.5px; color:var(--text-dim); background:var(--panel-2);
+    border:1px solid var(--border); border-radius:6px; padding:8px 10px; line-height:1.5;
+  }
+  .storage-status b{color:var(--text);}
+  .settings-body button{width:100%; text-align:left;}
+  .settings-note{font-size:11px; color:var(--text-dim); line-height:1.4;}
 
   .layout{flex:1; display:flex; min-height:0;}
 
@@ -246,11 +268,16 @@
   @media (max-width:900px){
     .sidebar{width:170px;}
     .notes-col{width:220px;}
-    .mode-panel{width:260px; right:-40px;}
+    .dropdown-panel{width:260px; right:-40px;}
   }
 </style>
 </head>
 <body data-theme="dark">
+
+<div class="reconnect-bar" id="reconnectBar">
+  <span>🔒 This workspace uses local folder storage — reconnect to load your latest notes.</span>
+  <button id="reconnectBtn">🔓 Reconnect folder</button>
+</div>
 
 <header>
   <div class="brand">
@@ -262,19 +289,36 @@
   </div>
   <div class="hdr-actions">
 
-    <div class="mode-picker">
-      <button class="mode-trigger" id="modeTrigger">
+    <div class="dropdown-wrap">
+      <button class="dropdown-trigger" id="modeTrigger">
         <span class="dot" id="modeTriggerDot"></span>
         <span id="modeTriggerLabel">Mode</span>
         <span class="chev">▾</span>
       </button>
-      <div class="mode-panel" id="modePanel">
-        <div class="mode-panel-header">Select a mode</div>
-        <div class="mode-list" id="modeList"></div>
-        <div class="mode-panel-footer">
+      <div class="dropdown-panel" id="modePanel">
+        <div class="panel-section-header">Default modes</div>
+        <div class="mode-list" id="defaultModeList"></div>
+        <div class="panel-divider"></div>
+        <div class="panel-section-header">Installed / created modes</div>
+        <div class="mode-list" id="customModeList"></div>
+        <div class="panel-footer">
           <button id="createModeBtn">＋ Create custom mode</button>
-          <button id="importModeBtn">⇧ Import mode</button>
-          <button id="exportModeBtn">⇩ Export current mode</button>
+          <button id="importModeBtn">⇧ Import mode (.json / .zip)</button>
+          <button id="exportModeJsonBtn">⇩ Export mode template (.json)</button>
+          <button id="exportModeZipBtn">⇩ Export mode + notes (.zip)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dropdown-wrap">
+      <button class="dropdown-trigger icon-btn" id="settingsTrigger" title="Storage settings">⚙</button>
+      <div class="dropdown-panel" id="settingsPanel" style="width:290px;">
+        <div class="panel-section-header">Storage</div>
+        <div class="settings-body">
+          <div class="storage-status" id="storageStatus">Currently saving to: <b>Browser storage</b></div>
+          <button id="connectFolderBtn">📁 Save notes to a folder on this device</button>
+          <button id="browserStorageBtn">🌐 Switch back to browser storage</button>
+          <div class="settings-note">Local folder storage uses your browser's File System Access API (Chrome / Edge / Brave). Notes are written to <code>arynotes-data.json</code> inside the folder you pick, with a browser-side backup kept automatically.</div>
         </div>
       </div>
     </div>
@@ -287,7 +331,7 @@
     <button id="importBtn">⇧ Import notes</button>
     <button id="exportAllBtn">⇩ Export all</button>
     <input type="file" id="fileInput" accept=".txt,.json,.md" multiple>
-    <input type="file" id="modeFileInput" accept=".json">
+    <input type="file" id="modeFileInput" accept=".json,.zip">
   </div>
 </header>
 
@@ -348,18 +392,20 @@
 
 </div>
 
-<footer>AryNotes · notes stored only in this browser · Made by Aryan Giri</footer>
+<footer>AryNotes · Made by Aryan Giri</footer>
 
 <script>
 (function(){
   const STORAGE_KEY = 'arynotes_v4';
   const LEGACY_KEY  = 'arynotes_v3';
   const THEME_KEY   = 'arynotes_theme';
+  const STORAGE_MODE_KEY = 'arynotes_storage_mode';
+  const FOLDER_NAME_KEY  = 'arynotes_folder_name';
   const COLOR_PALETTE = ['#3fa796','#4c8bf5','#e0a458','#d9534f','#a86ee0','#5cc98b','#e0c458','#8492a6'];
 
   const BUILT_IN_MODES = [
     { id:'freedom', name:'Freedom Mode', builtIn:true,
-      blurb:'Blank slate — build your own folders for study, journaling, or general notes.',
+      blurb:'Blank slate for study, journaling, or general notes.',
       folders: [] },
     { id:'pentest', name:'Pentest Mode', builtIn:true,
       blurb:'Standard folders for authorized penetration test engagements.',
@@ -396,21 +442,23 @@
       ]},
   ];
 
+  function defaultState(){
+    return { activeModeId:'freedom', customModes:[], folders:[], notes:[] };
+  }
+
   let state = load();
   let currentFolderId = 'ALL';
   let currentNoteId = null;
   let previewMode = false;
-
-  function defaultState(){
-    return { activeModeId:'freedom', customModes:[], folders:[], notes:[] };
-  }
+  let storageMode = localStorage.getItem(STORAGE_MODE_KEY) || 'browser';
+  let folderName = localStorage.getItem(FOLDER_NAME_KEY) || '';
+  let folderHandle = null;
 
   function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) return Object.assign(defaultState(), JSON.parse(raw));
     }catch(e){}
-    // migrate from v3 (two-mode) format if present
     try{
       const legacy = localStorage.getItem(LEGACY_KEY);
       if(legacy){
@@ -428,7 +476,11 @@
     }catch(e){}
     return defaultState();
   }
-  function persist(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function persist(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); // always-on local cache/mirror
+    if(storageMode === 'folder' && folderHandle){ writeStateToFolder(); }
+  }
   function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
   function fmtDate(ts){
@@ -437,10 +489,7 @@
     return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
   }
   function folderById(id){ return state.folders.find(f=>f.id===id); }
-  function nextColor(){
-    const idx = state.folders.length % COLOR_PALETTE.length;
-    return COLOR_PALETTE[idx];
-  }
+  function nextColor(){ return COLOR_PALETTE[state.folders.length % COLOR_PALETTE.length]; }
 
   // ---------- Theme ----------
   function applyTheme(t){
@@ -454,6 +503,131 @@
     b.addEventListener('click', ()=> applyTheme(b.dataset.themeBtn));
   });
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+  // ---------- IndexedDB (persist the folder handle across reloads) ----------
+  function idbOpen(){
+    return new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){ reject(new Error('no indexeddb')); return; }
+      const req = indexedDB.open('arynotes-fs', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('handles'); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(key, val){
+    const db = await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('handles','readwrite');
+      tx.objectStore('handles').put(val, key);
+      tx.oncomplete = ()=>resolve();
+      tx.onerror = ()=>reject(tx.error);
+    });
+  }
+  async function idbGet(key){
+    const db = await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx = db.transaction('handles','readonly');
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = ()=>resolve(req.result);
+      req.onerror = ()=>reject(req.error);
+    });
+  }
+
+  // ---------- Local folder storage ----------
+  function renderStorageStatus(){
+    const status = document.getElementById('storageStatus');
+    if(storageMode === 'folder'){
+      status.innerHTML = `Currently saving to: <b>Local folder${folderName ? ' — ' + escapeHtml(folderName) : ''}</b><br>+ a backup mirror in browser storage`;
+    } else {
+      status.innerHTML = `Currently saving to: <b>Browser storage</b> (this device, this browser only)`;
+    }
+  }
+
+  async function writeStateToFolder(){
+    if(!folderHandle) return;
+    try{
+      let perm = await folderHandle.queryPermission({mode:'readwrite'});
+      if(perm !== 'granted'){
+        perm = await folderHandle.requestPermission({mode:'readwrite'});
+        if(perm !== 'granted') return;
+      }
+      const fileHandle = await folderHandle.getFileHandle('arynotes-data.json', {create:true});
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(state, null, 2));
+      await writable.close();
+    }catch(err){ console.warn('AryNotes: folder write failed', err); }
+  }
+
+  async function loadStateFromFolder(){
+    try{
+      const fileHandle = await folderHandle.getFileHandle('arynotes-data.json', {create:true});
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      if(text && text.trim()){
+        state = Object.assign(defaultState(), JSON.parse(text));
+      }
+      hideReconnectBar();
+      applyMode(state.activeModeId || 'freedom');
+    }catch(err){ console.warn('AryNotes: folder read failed', err); }
+  }
+
+  function showReconnectBar(){ document.getElementById('reconnectBar').classList.add('show'); }
+  function hideReconnectBar(){ document.getElementById('reconnectBar').classList.remove('show'); }
+
+  document.getElementById('connectFolderBtn').addEventListener('click', async ()=>{
+    if(!('showDirectoryPicker' in window)){
+      alert('Local folder storage needs a Chromium browser (Chrome, Edge, Brave). Staying on browser storage here.');
+      return;
+    }
+    try{
+      const handle = await window.showDirectoryPicker({mode:'readwrite'});
+      folderHandle = handle;
+      folderName = handle.name;
+      await idbSet('dir', handle).catch(()=>{});
+      storageMode = 'folder';
+      localStorage.setItem(STORAGE_MODE_KEY, 'folder');
+      localStorage.setItem(FOLDER_NAME_KEY, folderName);
+      await writeStateToFolder();
+      renderStorageStatus();
+      alert('Connected. Notes now save to "' + folderName + '/arynotes-data.json", with a backup mirror kept in this browser automatically.');
+    }catch(err){
+      if(err && err.name !== 'AbortError') alert('Could not access that folder: ' + err.message);
+    }
+  });
+
+  document.getElementById('browserStorageBtn').addEventListener('click', ()=>{
+    storageMode = 'browser';
+    localStorage.setItem(STORAGE_MODE_KEY, 'browser');
+    renderStorageStatus();
+    alert('Switched back to browser storage. Your local folder file is untouched — reconnect any time from this menu.');
+  });
+
+  document.getElementById('reconnectBtn').addEventListener('click', async ()=>{
+    if(!folderHandle){
+      try{ folderHandle = await idbGet('dir'); }catch(e){}
+    }
+    if(!folderHandle){ alert('No saved folder connection found — pick a folder again from the ⚙ menu.'); return; }
+    try{
+      const perm = await folderHandle.requestPermission({mode:'readwrite'});
+      if(perm === 'granted') await loadStateFromFolder();
+      else alert('Permission was not granted, so notes will keep loading from browser storage.');
+    }catch(err){ alert('Reconnect failed: ' + err.message); }
+  });
+
+  async function tryReconnectFolderSilently(){
+    if(storageMode !== 'folder') return;
+    try{
+      const handle = await idbGet('dir');
+      if(!handle) return;
+      folderHandle = handle;
+      const perm = await handle.queryPermission({mode:'readwrite'});
+      if(perm === 'granted'){
+        await loadStateFromFolder();
+      } else {
+        showReconnectBar();
+      }
+    }catch(err){ /* File System Access API unsupported — silently stay on browser storage */ }
+  }
 
   // ---------- Modes ----------
   function allModes(){ return BUILT_IN_MODES.concat(state.customModes); }
@@ -488,52 +662,67 @@
     return state.folders.filter(f => f.modeId === state.activeModeId);
   }
 
-  // ---------- Mode picker UI ----------
-  const modeTrigger = document.getElementById('modeTrigger');
-  const modePanel = document.getElementById('modePanel');
-
-  modeTrigger.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    modePanel.classList.toggle('open');
-  });
-  document.addEventListener('click', (e)=>{
-    if(!modePanel.contains(e.target) && e.target !== modeTrigger){
-      modePanel.classList.remove('open');
-    }
+  // ---------- Dropdown open/close plumbing ----------
+  function wireDropdown(triggerId, panelId){
+    const trigger = document.getElementById(triggerId);
+    const panel = document.getElementById(panelId);
+    trigger.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const willOpen = !panel.classList.contains('open');
+      document.querySelectorAll('.dropdown-panel.open').forEach(p=>p.classList.remove('open'));
+      if(willOpen) panel.classList.add('open');
+    });
+    panel.addEventListener('click', (e)=> e.stopPropagation());
+  }
+  wireDropdown('modeTrigger','modePanel');
+  wireDropdown('settingsTrigger','settingsPanel');
+  document.addEventListener('click', ()=>{
+    document.querySelectorAll('.dropdown-panel.open').forEach(p=>p.classList.remove('open'));
   });
   document.addEventListener('keydown', (e)=>{
-    if(e.key === 'Escape') modePanel.classList.remove('open');
+    if(e.key === 'Escape') document.querySelectorAll('.dropdown-panel.open').forEach(p=>p.classList.remove('open'));
   });
 
   function renderModePanel(){
-    const list = document.getElementById('modeList');
-    list.innerHTML = '';
-    allModes().forEach(m=>{
-      const count = state.folders.filter(f=>f.modeId===m.id).length;
-      const el = document.createElement('div');
-      el.className = 'mode-option' + (m.id===state.activeModeId ? ' active' : '');
-      el.innerHTML = `
-        <span class="m-dot" style="background:${m.builtIn ? 'var(--accent-2)' : 'var(--accent)'}"></span>
-        <span class="m-info">
-          <div class="m-name${m.id===state.activeModeId ? ' active-check':''}">${escapeHtml(m.name)}</div>
-          <div class="m-blurb">${escapeHtml(m.blurb || '')} · ${count} folder${count===1?'':'s'}</div>
-        </span>
-        ${!m.builtIn ? '<button class="m-del" title="Delete custom mode">✕</button>' : ''}
-      `;
-      el.addEventListener('click', (e)=>{
-        if(e.target.classList.contains('m-del')) return;
-        applyMode(m.id);
-        modePanel.classList.remove('open');
-      });
-      const delBtn = el.querySelector('.m-del');
-      if(delBtn){
-        delBtn.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          deleteCustomMode(m.id);
-        });
-      }
-      list.appendChild(el);
+    const defaultList = document.getElementById('defaultModeList');
+    const customList = document.getElementById('customModeList');
+    defaultList.innerHTML = '';
+    customList.innerHTML = '';
+
+    BUILT_IN_MODES.forEach(m => defaultList.appendChild(modeOptionEl(m)));
+
+    if(state.customModes.length === 0){
+      customList.innerHTML = `<div class="mode-empty">No custom modes yet — create or import one below.</div>`;
+    } else {
+      state.customModes.forEach(m => customList.appendChild(modeOptionEl(m)));
+    }
+  }
+
+  function modeOptionEl(m){
+    const count = state.folders.filter(f=>f.modeId===m.id).length;
+    const el = document.createElement('div');
+    el.className = 'mode-option' + (m.id===state.activeModeId ? ' active' : '');
+    el.innerHTML = `
+      <span class="m-dot" style="background:${m.builtIn ? 'var(--accent-2)' : 'var(--accent)'}"></span>
+      <span class="m-info">
+        <div class="m-name${m.id===state.activeModeId ? ' active-check':''}">${escapeHtml(m.name)}</div>
+        <div class="m-blurb">${escapeHtml(m.blurb || '')} · ${count} folder${count===1?'':'s'}</div>
+      </span>
+      ${!m.builtIn ? '<button class="m-del" title="Delete custom mode">✕</button>' : ''}
+    `;
+    el.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('m-del')) return;
+      applyMode(m.id);
+      document.getElementById('modePanel').classList.remove('open');
     });
+    const delBtn = el.querySelector('.m-del');
+    if(delBtn){
+      delBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        deleteCustomMode(m.id);
+      });
+    }
+    return el;
   }
 
   function deleteCustomMode(id){
@@ -545,13 +734,9 @@
     state.notes = state.notes.filter(n=>!folderIds.has(n.folderId));
     state.folders = state.folders.filter(f=>f.modeId!==id);
     state.customModes = state.customModes.filter(cm=>cm.id!==id);
-    if(state.activeModeId === id){
-      persist();
-      applyMode('freedom');
-    } else {
-      persist();
-      renderModePanel();
-    }
+    persist();
+    if(state.activeModeId === id){ applyMode('freedom'); }
+    else{ renderModePanel(); }
   }
 
   document.getElementById('createModeBtn').addEventListener('click', ()=>{
@@ -561,12 +746,11 @@
     const folders = (startersRaw||'').split(',').map(s=>s.trim()).filter(Boolean).map((n,i)=>({
       name:n, color: COLOR_PALETTE[i % COLOR_PALETTE.length]
     }));
-    const m = { id: uid('m'), name: name.trim(), builtIn:false,
-      blurb: 'Custom mode', folders };
+    const m = { id: uid('m'), name: name.trim(), builtIn:false, blurb: 'Custom mode', folders };
     state.customModes.push(m);
     persist();
     applyMode(m.id);
-    modePanel.classList.remove('open');
+    document.getElementById('modePanel').classList.add('open');
   });
 
   document.getElementById('importModeBtn').addEventListener('click', ()=>{
@@ -576,6 +760,14 @@
     const file = e.target.files[0];
     e.target.value = '';
     if(!file) return;
+    if(file.name.toLowerCase().endsWith('.zip')){
+      await importModeZip(file);
+    } else {
+      await importModeJson(file);
+    }
+  });
+
+  async function importModeJson(file){
     try{
       const text = await file.text();
       const data = JSON.parse(text);
@@ -592,19 +784,141 @@
       state.customModes.push(m);
       persist();
       applyMode(m.id);
-      modePanel.classList.remove('open');
+      document.getElementById('modePanel').classList.add('open');
     }catch(err){
       alert('Could not import mode: ' + err.message);
     }
-  });
+  }
 
-  document.getElementById('exportModeBtn').addEventListener('click', ()=>{
+  document.getElementById('exportModeJsonBtn').addEventListener('click', ()=>{
     const m = currentMode();
     const folders = visibleFolders().map(f=>({name:f.name, color:f.color}));
     const payload = JSON.stringify({ type:'arynotes-mode', name:m.name, blurb:m.blurb, folders }, null, 2);
     downloadFile('arynotes-mode-' + slug(m.name) + '.json', payload, 'application/json');
-    modePanel.classList.remove('open');
   });
+
+  document.getElementById('exportModeZipBtn').addEventListener('click', async ()=>{
+    await exportModeZip();
+  });
+
+  async function exportModeZip(){
+    if(typeof JSZip === 'undefined'){
+      alert('The zip library is still loading (or blocked) — try again in a second, or check your internet connection.');
+      return;
+    }
+    const m = currentMode();
+    const folders = visibleFolders();
+    const zip = new JSZip();
+    const root = zip.folder(sanitizeFilename(m.name) || 'mode');
+    const metaFolders = [];
+
+    folders.forEach(f=>{
+      const folderZip = root.folder(sanitizeFilename(f.name) || 'folder');
+      metaFolders.push({name:f.name, color:f.color});
+      const notes = state.notes.filter(n=>n.folderId===f.id);
+      notes.forEach(n=>{
+        let content = n.content || '';
+        let imgIndex = 0;
+        content = content.replace(/!\[([^\]]*)\]\((data:image\/(\w+);base64,[^)]+)\)/g, (full, alt, dataUri, ext)=>{
+          imgIndex++;
+          const base64 = dataUri.split(',')[1];
+          const imgName = sanitizeFilename(n.title || 'note') + '_img' + imgIndex + '.' + ext;
+          folderZip.file(imgName, base64, {base64:true});
+          return `![${alt}](./${imgName})`;
+        });
+        const header = `Title: ${n.title}\nTags: ${(n.tags||[]).join(', ')}\nCreated: ${fmtDate(n.createdAt)}\nUpdated: ${fmtDate(n.updatedAt)}\n\n`;
+        const fname = sanitizeFilename(n.title || 'untitled') + '.md';
+        folderZip.file(fname, header + content);
+      });
+    });
+
+    root.file('mode.json', JSON.stringify({ type:'arynotes-mode-zip', name:m.name, blurb:m.blurb, folders:metaFolders }, null, 2));
+
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = sanitizeFilename(m.name) + '.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function importModeZip(file){
+    if(typeof JSZip === 'undefined'){
+      alert('The zip library is still loading (or blocked) — try again in a second, or check your internet connection.');
+      return;
+    }
+    try{
+      const zip = await JSZip.loadAsync(file);
+      let metaEntry = null, rootPrefix = '';
+      zip.forEach((path, entry)=>{
+        if(!entry.dir && path.endsWith('mode.json')){
+          metaEntry = entry;
+          rootPrefix = path.slice(0, path.length - 'mode.json'.length);
+        }
+      });
+      if(!metaEntry){ alert('This zip doesn\'t look like an AryNotes mode export (missing mode.json).'); return; }
+
+      const meta = JSON.parse(await metaEntry.async('string'));
+      let name = meta.name || 'Imported Mode';
+      const existingNames = allModes().map(x=>x.name.toLowerCase());
+      if(existingNames.includes(name.toLowerCase())) name = name + ' (imported)';
+      const newMode = { id: uid('m'), name, builtIn:false, blurb: meta.blurb || 'Imported mode (zip)', folders: [] };
+      state.customModes.push(newMode);
+
+      const folderNameToId = {};
+      (meta.folders||[]).forEach(f=>{
+        const fid = uid('f');
+        folderNameToId[f.name] = fid;
+        state.folders.push({id:fid, name:f.name, color:f.color || nextColor(), modeId:newMode.id, preset:true});
+      });
+
+      const mdEntries = [];
+      zip.forEach((path, entry)=>{ if(!entry.dir && path.startsWith(rootPrefix) && path.endsWith('.md')) mdEntries.push({path, entry}); });
+
+      for(const {path, entry} of mdEntries){
+        const rel = path.slice(rootPrefix.length);
+        const parts = rel.split('/');
+        if(parts.length < 2) continue;
+        const folderName = parts[0];
+        const fileName = parts.slice(1).join('/');
+        let folderId = folderNameToId[folderName];
+        if(!folderId){
+          folderId = uid('f');
+          folderNameToId[folderName] = folderId;
+          state.folders.push({id:folderId, name:folderName, color:nextColor(), modeId:newMode.id, preset:false});
+        }
+
+        let text = await entry.async('string');
+        const title = fileName.replace(/\.md$/,'');
+        let content = text;
+        const headerMatch = text.match(/^Title:.*\n(?:Tags:.*\n)?(?:Created:.*\n)?(?:Updated:.*\n)?\n([\s\S]*)$/);
+        if(headerMatch) content = headerMatch[1];
+
+        const imgRefRegex = /!\[([^\]]*)\]\(\.\/([^)]+)\)/g;
+        let m2, imgMatches = [];
+        while((m2 = imgRefRegex.exec(content)) !== null) imgMatches.push(m2);
+        for(const r of imgMatches){
+          const [full, alt, imgFile] = r;
+          const imgPath = rootPrefix + folderName + '/' + imgFile;
+          const imgEntry = zip.file(imgPath);
+          if(imgEntry){
+            const base64 = await imgEntry.async('base64');
+            const ext = (imgFile.split('.').pop() || 'png').toLowerCase();
+            content = content.split(full).join(`![${alt}](data:image/${ext};base64,${base64})`);
+          }
+        }
+
+        const now = Date.now();
+        state.notes.push({ id: uid('n'), title, content, tags:['imported'], folderId, createdAt: now, updatedAt: now });
+      }
+
+      persist();
+      applyMode(newMode.id);
+      document.getElementById('modePanel').classList.add('open');
+    }catch(err){
+      alert('Could not import zip: ' + err.message);
+    }
+  }
 
   // ---------- Rendering: folders ----------
   function renderFolders(){
@@ -931,13 +1245,11 @@ ${content}
         alert('That JSON file doesn\'t look like an AryNotes backup.');
         return;
       }
-      // bring in any custom modes referenced in the backup
       (data.customModes || []).forEach(cm=>{
         if(!state.customModes.find(x=>x.id===cm.id) && !BUILT_IN_MODES.find(x=>x.id===cm.id)){
           state.customModes.push(cm);
         }
       });
-      // register a fallback custom mode for any orphan modeId we don't recognize
       const knownIds = new Set(allModes().map(m=>m.id));
       const orphanIds = new Set();
       data.folders.forEach(f=>{ if(f.modeId && !knownIds.has(f.modeId)) orphanIds.add(f.modeId); });
@@ -977,7 +1289,7 @@ ${content}
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-  function sanitizeFilename(s){ return s.replace(/[^a-z0-9\-_]+/gi,'_').slice(0,60) || 'note'; }
+  function sanitizeFilename(s){ return String(s).replace(/[^a-z0-9\-_]+/gi,'_').slice(0,60) || 'note'; }
   function dateStamp(){
     const d = new Date();
     return d.getFullYear()+''+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
@@ -992,7 +1304,9 @@ ${content}
   }
 
   // init
+  renderStorageStatus();
   applyMode(state.activeModeId || 'freedom');
+  tryReconnectFolderSilently();
 })();
 </script>
 </body>
