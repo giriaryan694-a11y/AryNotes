@@ -33,7 +33,7 @@
   header{
     display:flex; align-items:center; justify-content:space-between;
     padding:10px 18px; background:var(--panel); border-bottom:1px solid var(--border);
-    flex-shrink:0; flex-wrap:wrap; gap:8px;
+    flex-shrink:0; flex-wrap:wrap; gap:8px; position:relative; z-index:20;
   }
   .brand{display:flex; align-items:center; gap:10px;}
   .brand .mark{
@@ -50,7 +50,6 @@
     padding:5px 9px; border-radius:4px; font-size:12px; font-family:var(--mono);
   }
   .seg-btn.active{background:var(--accent); color:var(--panel); font-weight:600;}
-  .mode-group .seg-btn.active{background:var(--accent-2); color:#fff;}
 
   button{
     font-family:var(--sans); cursor:pointer; border:1px solid var(--border);
@@ -63,6 +62,47 @@
   button.ghost-danger:hover{border-color:var(--danger); color:var(--danger);}
   button:disabled{opacity:.4; cursor:not-allowed;}
   input[type=file]{display:none;}
+
+  /* ---- Mode picker ---- */
+  .mode-picker{position:relative;}
+  .mode-trigger{
+    display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12.5px;
+    background:var(--panel-2); border:1px solid var(--border);
+  }
+  .mode-trigger .dot{width:8px; height:8px; border-radius:50%; background:var(--accent-2);}
+  .mode-trigger .chev{font-size:10px; color:var(--text-dim);}
+  .mode-panel{
+    display:none; position:absolute; top:calc(100% + 6px); right:0; width:300px;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:50; overflow:hidden;
+  }
+  .mode-panel.open{display:block;}
+  .mode-panel-header{
+    padding:10px 12px; font-family:var(--mono); font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--text-dim); border-bottom:1px solid var(--border);
+  }
+  .mode-list{max-height:260px; overflow-y:auto;}
+  .mode-option{
+    display:flex; align-items:center; gap:9px; padding:9px 12px; cursor:pointer;
+    border-bottom:1px solid var(--border);
+  }
+  .mode-option:last-child{border-bottom:none;}
+  .mode-option:hover{background:var(--panel-2);}
+  .mode-option.active{background:var(--panel-2);}
+  .mode-option .m-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .mode-option .m-info{flex:1; min-width:0;}
+  .mode-option .m-name{font-size:13px; font-weight:600;}
+  .mode-option .m-name.active-check::after{content:" ✓"; color:var(--accent-2);}
+  .mode-option .m-blurb{font-size:10.5px; color:var(--text-dim); margin-top:1px; line-height:1.3;}
+  .mode-option .m-del{
+    border:none; background:transparent; color:var(--text-dim); font-size:12px; padding:2px 4px; flex-shrink:0;
+  }
+  .mode-option .m-del:hover{color:var(--danger);}
+  .mode-panel-footer{
+    display:flex; flex-direction:column; gap:5px; padding:10px 12px; border-top:1px solid var(--border);
+    background:var(--panel-2);
+  }
+  .mode-panel-footer button{width:100%; text-align:left; font-size:12.5px;}
 
   .layout{flex:1; display:flex; min-height:0;}
 
@@ -133,6 +173,7 @@
   select{
     padding:6px 8px; border-radius:5px; border:1px solid var(--border);
     background:var(--panel-2); color:var(--text); font-size:12.5px; font-family:var(--mono);
+    max-width:220px;
   }
   .editor-body{flex:1; display:flex; flex-direction:column; padding:16px; gap:10px; overflow-y:auto; min-height:0;}
   input#title{
@@ -166,7 +207,6 @@
     white-space:pre; overflow-wrap:normal; overflow-x:auto;
   }
   textarea#note:focus{outline:none;}
-  textarea#note.dragging{background:var(--panel-2);}
   .editor-pane.dragging{border-color:var(--accent-2); border-style:dashed;}
   .drop-hint{
     position:absolute; inset:0; display:none; align-items:center; justify-content:center;
@@ -206,6 +246,7 @@
   @media (max-width:900px){
     .sidebar{width:170px;}
     .notes-col{width:220px;}
+    .mode-panel{width:260px; right:-40px;}
   }
 </style>
 </head>
@@ -220,18 +261,33 @@
     </div>
   </div>
   <div class="hdr-actions">
-    <div class="seg-group mode-group">
-      <button class="seg-btn" data-mode-btn="freedom">Freedom Mode</button>
-      <button class="seg-btn" data-mode-btn="pentest">Pentest Mode</button>
+
+    <div class="mode-picker">
+      <button class="mode-trigger" id="modeTrigger">
+        <span class="dot" id="modeTriggerDot"></span>
+        <span id="modeTriggerLabel">Mode</span>
+        <span class="chev">▾</span>
+      </button>
+      <div class="mode-panel" id="modePanel">
+        <div class="mode-panel-header">Select a mode</div>
+        <div class="mode-list" id="modeList"></div>
+        <div class="mode-panel-footer">
+          <button id="createModeBtn">＋ Create custom mode</button>
+          <button id="importModeBtn">⇧ Import mode</button>
+          <button id="exportModeBtn">⇩ Export current mode</button>
+        </div>
+      </div>
     </div>
+
     <div class="seg-group theme-group">
       <button class="seg-btn" data-theme-btn="dark">Dark</button>
       <button class="seg-btn" data-theme-btn="light">Light</button>
       <button class="seg-btn" data-theme-btn="eyesaver">Eye-saver</button>
     </div>
-    <button id="importBtn">⇧ Import</button>
+    <button id="importBtn">⇧ Import notes</button>
     <button id="exportAllBtn">⇩ Export all</button>
     <input type="file" id="fileInput" accept=".txt,.json,.md" multiple>
+    <input type="file" id="modeFileInput" accept=".json">
   </div>
 </header>
 
@@ -296,42 +352,95 @@
 
 <script>
 (function(){
-  const STORAGE_KEY = 'arynotes_v3';
-  const THEME_KEY = 'arynotes_theme';
-  const MODE_KEY = 'arynotes_mode';
+  const STORAGE_KEY = 'arynotes_v4';
+  const LEGACY_KEY  = 'arynotes_v3';
+  const THEME_KEY   = 'arynotes_theme';
+  const COLOR_PALETTE = ['#3fa796','#4c8bf5','#e0a458','#d9534f','#a86ee0','#5cc98b','#e0c458','#8492a6'];
 
-  const PENTEST_FOLDERS = [
-    {id:'f_recon',   name:'Reconnaissance',   color:'#3fa796', preset:true},
-    {id:'f_enum',    name:'Enumeration',      color:'#4c8bf5', preset:true},
-    {id:'f_vuln',    name:'Vulnerabilities',  color:'#e0a458', preset:true},
-    {id:'f_exploit', name:'Exploitation',     color:'#d9534f', preset:true},
-    {id:'f_post',    name:'Post-Exploitation',color:'#a86ee0', preset:true},
-    {id:'f_creds',   name:'Credentials',      color:'#e0c458', preset:true},
-    {id:'f_evidence',name:'Evidence',         color:'#5cc98b', preset:true},
-    {id:'f_report',  name:'Reporting',        color:'#8492a6', preset:true},
+  const BUILT_IN_MODES = [
+    { id:'freedom', name:'Freedom Mode', builtIn:true,
+      blurb:'Blank slate — build your own folders for study, journaling, or general notes.',
+      folders: [] },
+    { id:'pentest', name:'Pentest Mode', builtIn:true,
+      blurb:'Standard folders for authorized penetration test engagements.',
+      folders: [
+        {name:'Reconnaissance', color:'#3fa796'},
+        {name:'Enumeration', color:'#4c8bf5'},
+        {name:'Vulnerabilities', color:'#e0a458'},
+        {name:'Exploitation', color:'#d9534f'},
+        {name:'Post-Exploitation', color:'#a86ee0'},
+        {name:'Credentials', color:'#e0c458'},
+        {name:'Evidence', color:'#5cc98b'},
+        {name:'Reporting', color:'#8492a6'},
+      ]},
+    { id:'bugbounty', name:'Bug Bounty Mode', builtIn:true,
+      blurb:'Folders tuned for in-scope bug bounty hunting.',
+      folders: [
+        {name:'Scope & Program Rules', color:'#4c8bf5'},
+        {name:'Recon', color:'#3fa796'},
+        {name:'Asset & Subdomain Enum', color:'#5cc98b'},
+        {name:'Vulnerabilities', color:'#e0a458'},
+        {name:'Proof of Concept', color:'#d9534f'},
+        {name:'Reports Submitted', color:'#a86ee0'},
+        {name:'Triage & Payouts', color:'#e0c458'},
+      ]},
+    { id:'osint', name:'OSINT Mode', builtIn:true,
+      blurb:'Folders for open-source intelligence gathering.',
+      folders: [
+        {name:'Target Profile', color:'#4c8bf5'},
+        {name:'Social Media', color:'#3fa796'},
+        {name:'Public Records', color:'#e0c458'},
+        {name:'Infrastructure & DNS', color:'#5cc98b'},
+        {name:'Leaks & Breach Data', color:'#d9534f'},
+        {name:'Documentation', color:'#8492a6'},
+      ]},
   ];
 
   let state = load();
-  let mode = localStorage.getItem(MODE_KEY) || 'freedom';
   let currentFolderId = 'ALL';
   let currentNoteId = null;
   let previewMode = false;
 
+  function defaultState(){
+    return { activeModeId:'freedom', customModes:[], folders:[], notes:[] };
+  }
+
   function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) return JSON.parse(raw);
+      if(raw) return Object.assign(defaultState(), JSON.parse(raw));
     }catch(e){}
-    return { folders: [], notes: [] };
+    // migrate from v3 (two-mode) format if present
+    try{
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if(legacy){
+        const old = JSON.parse(legacy);
+        const migrated = defaultState();
+        migrated.folders = (old.folders||[]).map(f=>({
+          id: f.id, name: f.name, color: f.color,
+          modeId: f.preset ? 'pentest' : 'freedom',
+          preset: !!f.preset
+        }));
+        migrated.notes = old.notes || [];
+        migrated.activeModeId = localStorage.getItem('arynotes_mode') || 'freedom';
+        return migrated;
+      }
+    }catch(e){}
+    return defaultState();
   }
   function persist(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
   function fmtDate(ts){
     if(!ts) return '';
     const d = new Date(ts);
     return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
   }
   function folderById(id){ return state.folders.find(f=>f.id===id); }
+  function nextColor(){
+    const idx = state.folders.length % COLOR_PALETTE.length;
+    return COLOR_PALETTE[idx];
+  }
 
   // ---------- Theme ----------
   function applyTheme(t){
@@ -346,35 +455,156 @@
   });
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 
-  // ---------- Mode: Pentest vs Freedom ----------
-  function applyMode(m){
-    mode = m;
-    localStorage.setItem(MODE_KEY, m);
-    document.querySelectorAll('[data-mode-btn]').forEach(b=>{
-      b.classList.toggle('active', b.dataset.modeBtn === m);
+  // ---------- Modes ----------
+  function allModes(){ return BUILT_IN_MODES.concat(state.customModes); }
+  function modeById(id){ return allModes().find(m=>m.id===id); }
+  function currentMode(){ return modeById(state.activeModeId) || BUILT_IN_MODES[0]; }
+
+  function seedModeFolders(m){
+    if(!m || !m.folders || !m.folders.length) return;
+    m.folders.forEach(tf=>{
+      const exists = state.folders.some(f => f.modeId===m.id && f.name.toLowerCase()===tf.name.toLowerCase());
+      if(!exists){
+        state.folders.push({id: uid('f'), name: tf.name, color: tf.color || nextColor(), modeId: m.id, preset:true});
+      }
     });
-    if(m === 'pentest'){
-      // seed preset folders if not already present (match by id)
-      PENTEST_FOLDERS.forEach(pf=>{
-        if(!state.folders.find(f=>f.id===pf.id)) state.folders.push(Object.assign({},pf));
-      });
-      persist();
-      document.getElementById('modeHint').textContent = 'Pentest mode: standard engagement folders loaded. Add your own alongside them.';
-    } else {
-      document.getElementById('modeHint').textContent = 'Freedom mode: blank slate — build your own folders for study, journaling, or general notes.';
-    }
-    if(currentFolderId !== 'ALL' && !visibleFolders().find(f=>f.id===currentFolderId)) currentFolderId = 'ALL';
-    renderAll();
   }
-  document.querySelectorAll('[data-mode-btn]').forEach(b=>{
-    b.addEventListener('click', ()=> applyMode(b.dataset.modeBtn));
-  });
+
+  function applyMode(id){
+    const m = modeById(id) || BUILT_IN_MODES[0];
+    state.activeModeId = m.id;
+    seedModeFolders(m);
+    persist();
+    document.getElementById('modeTriggerLabel').textContent = m.name;
+    document.getElementById('modeHint').textContent = m.blurb || '';
+    currentFolderId = 'ALL';
+    currentNoteId = null;
+    renderModePanel();
+    renderAll();
+    clearEditor();
+  }
 
   function visibleFolders(){
-    // In freedom mode, hide preset folders (user starts with none unless they made their own).
-    if(mode === 'freedom') return state.folders.filter(f=>!f.preset);
-    return state.folders;
+    return state.folders.filter(f => f.modeId === state.activeModeId);
   }
+
+  // ---------- Mode picker UI ----------
+  const modeTrigger = document.getElementById('modeTrigger');
+  const modePanel = document.getElementById('modePanel');
+
+  modeTrigger.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    modePanel.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!modePanel.contains(e.target) && e.target !== modeTrigger){
+      modePanel.classList.remove('open');
+    }
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') modePanel.classList.remove('open');
+  });
+
+  function renderModePanel(){
+    const list = document.getElementById('modeList');
+    list.innerHTML = '';
+    allModes().forEach(m=>{
+      const count = state.folders.filter(f=>f.modeId===m.id).length;
+      const el = document.createElement('div');
+      el.className = 'mode-option' + (m.id===state.activeModeId ? ' active' : '');
+      el.innerHTML = `
+        <span class="m-dot" style="background:${m.builtIn ? 'var(--accent-2)' : 'var(--accent)'}"></span>
+        <span class="m-info">
+          <div class="m-name${m.id===state.activeModeId ? ' active-check':''}">${escapeHtml(m.name)}</div>
+          <div class="m-blurb">${escapeHtml(m.blurb || '')} · ${count} folder${count===1?'':'s'}</div>
+        </span>
+        ${!m.builtIn ? '<button class="m-del" title="Delete custom mode">✕</button>' : ''}
+      `;
+      el.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('m-del')) return;
+        applyMode(m.id);
+        modePanel.classList.remove('open');
+      });
+      const delBtn = el.querySelector('.m-del');
+      if(delBtn){
+        delBtn.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          deleteCustomMode(m.id);
+        });
+      }
+      list.appendChild(el);
+    });
+  }
+
+  function deleteCustomMode(id){
+    const m = modeById(id);
+    if(!m || m.builtIn) return;
+    const folderCount = state.folders.filter(f=>f.modeId===id).length;
+    if(!confirm(`Delete mode "${m.name}"? ${folderCount} folder(s) and all notes inside will also be deleted.`)) return;
+    const folderIds = new Set(state.folders.filter(f=>f.modeId===id).map(f=>f.id));
+    state.notes = state.notes.filter(n=>!folderIds.has(n.folderId));
+    state.folders = state.folders.filter(f=>f.modeId!==id);
+    state.customModes = state.customModes.filter(cm=>cm.id!==id);
+    if(state.activeModeId === id){
+      persist();
+      applyMode('freedom');
+    } else {
+      persist();
+      renderModePanel();
+    }
+  }
+
+  document.getElementById('createModeBtn').addEventListener('click', ()=>{
+    const name = prompt('Name your custom mode (e.g. "Red Team Ops", "CTF Notes"):');
+    if(!name || !name.trim()) return;
+    const startersRaw = prompt('Starter folders, comma separated (optional — leave blank for none):', '');
+    const folders = (startersRaw||'').split(',').map(s=>s.trim()).filter(Boolean).map((n,i)=>({
+      name:n, color: COLOR_PALETTE[i % COLOR_PALETTE.length]
+    }));
+    const m = { id: uid('m'), name: name.trim(), builtIn:false,
+      blurb: 'Custom mode', folders };
+    state.customModes.push(m);
+    persist();
+    applyMode(m.id);
+    modePanel.classList.remove('open');
+  });
+
+  document.getElementById('importModeBtn').addEventListener('click', ()=>{
+    document.getElementById('modeFileInput').click();
+  });
+  document.getElementById('modeFileInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!data.name || !Array.isArray(data.folders)){
+        alert('That file doesn\'t look like an AryNotes mode export.');
+        return;
+      }
+      let name = data.name;
+      const existingNames = allModes().map(m=>m.name.toLowerCase());
+      if(existingNames.includes(name.toLowerCase())) name = name + ' (imported)';
+      const m = { id: uid('m'), name, builtIn:false,
+        blurb: data.blurb || 'Imported mode',
+        folders: data.folders.map(f=>({name:f.name, color:f.color || nextColor()})) };
+      state.customModes.push(m);
+      persist();
+      applyMode(m.id);
+      modePanel.classList.remove('open');
+    }catch(err){
+      alert('Could not import mode: ' + err.message);
+    }
+  });
+
+  document.getElementById('exportModeBtn').addEventListener('click', ()=>{
+    const m = currentMode();
+    const folders = visibleFolders().map(f=>({name:f.name, color:f.color}));
+    const payload = JSON.stringify({ type:'arynotes-mode', name:m.name, blurb:m.blurb, folders }, null, 2);
+    downloadFile('arynotes-mode-' + slug(m.name) + '.json', payload, 'application/json');
+    modePanel.classList.remove('open');
+  });
 
   // ---------- Rendering: folders ----------
   function renderFolders(){
@@ -382,7 +612,7 @@
     list.innerHTML = '';
     const folders = visibleFolders();
     if(folders.length === 0){
-      list.innerHTML = `<div class="empty-hint">No folders yet.<br>Tap ＋ to create one${mode==='freedom' ? ', or switch to Pentest Mode for a ready-made set.' : '.'}</div>`;
+      list.innerHTML = `<div class="empty-hint">No folders yet.<br>Tap ＋ to create one, or pick a mode with a ready-made set.</div>`;
     }
     folders.forEach(f=>{
       const count = state.notes.filter(n=>n.folderId===f.id).length;
@@ -410,8 +640,11 @@
     document.getElementById('allNotesBtn').classList.toggle('active', currentFolderId==='ALL');
 
     const sel = document.getElementById('folderSelect');
-    const selFolders = folders.length ? folders : state.folders;
-    sel.innerHTML = selFolders.map(f=>`<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');
+    if(folders.length === 0){
+      sel.innerHTML = `<option value="" disabled selected>No folders — create one first</option>`;
+    } else {
+      sel.innerHTML = folders.map(f=>`<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');
+    }
   }
 
   document.getElementById('allNotesBtn').addEventListener('click', ()=>{
@@ -422,8 +655,7 @@
   document.getElementById('addFolderBtn').addEventListener('click', ()=>{
     const name = prompt('New folder name (e.g. "Client X — Web App" or "Chapter 3 Notes"):');
     if(!name || !name.trim()) return;
-    const colors = ['#3fa796','#4c8bf5','#e0a458','#d9534f','#a86ee0','#5cc98b'];
-    const f = {id: uid('f'), name: name.trim(), color: colors[state.folders.length % colors.length], preset:false};
+    const f = {id: uid('f'), name: name.trim(), color: nextColor(), modeId: state.activeModeId, preset:false};
     state.folders.push(f);
     currentFolderId = f.id;
     persist();
@@ -493,7 +725,10 @@
     document.getElementById('note').value = '';
     document.getElementById('metaLine').textContent = 'New note — not yet saved';
     const folders = visibleFolders();
-    document.getElementById('folderSelect').value = currentFolderId !== 'ALL' ? currentFolderId : (folders[0] ? folders[0].id : '');
+    const sel = document.getElementById('folderSelect');
+    if(folders.length){
+      sel.value = currentFolderId !== 'ALL' && folders.find(f=>f.id===currentFolderId) ? currentFolderId : folders[0].id;
+    }
     document.getElementById('deleteBtn').disabled = true;
     setPreview(false);
     updateLineNumbers();
@@ -506,7 +741,8 @@
     document.getElementById('title').value = n.title || '';
     document.getElementById('tags').value = (n.tags||[]).join(', ');
     document.getElementById('note').value = n.content || '';
-    document.getElementById('folderSelect').value = n.folderId;
+    const sel = document.getElementById('folderSelect');
+    if([...sel.options].some(o=>o.value===n.folderId)) sel.value = n.folderId;
     document.getElementById('metaLine').textContent =
       `Created ${fmtDate(n.createdAt)} · Updated ${fmtDate(n.updatedAt)}`;
     document.getElementById('deleteBtn').disabled = false;
@@ -567,7 +803,7 @@ ${content}
 
   document.getElementById('searchBox').addEventListener('input', renderNotes);
 
-  // ---------- Write / Preview tabs (markdown-lite, renders dropped images) ----------
+  // ---------- Write / Preview tabs ----------
   function setPreview(on){
     previewMode = on;
     document.getElementById('writeTab').classList.toggle('active', !on);
@@ -596,7 +832,7 @@ ${content}
     updatePreviewGutter(raw);
   }
 
-  // ---------- Line numbers (write mode + preview mode) ----------
+  // ---------- Line numbers ----------
   const lineGutter = document.getElementById('lineGutter');
   const previewGutter = document.getElementById('previewGutter');
 
@@ -621,48 +857,50 @@ ${content}
     previewGutter.scrollTop = this.scrollTop;
   });
 
-  // ---------- Drag & drop images into note (GitHub-style inline embed) ----------
-  const textarea = document.getElementById('note');
+  // ---------- Drag & drop images into note ----------
   const dropHint = document.getElementById('dropHint');
   const editorPane = document.getElementById('editorPane');
+  let dragCounter = 0;
 
-  ['dragenter','dragover'].forEach(evt=>{
-    textarea.addEventListener(evt, (e)=>{
-      e.preventDefault();
-      if(Array.from(e.dataTransfer.items||[]).some(it=>it.kind==='file')){
-        editorPane.classList.add('dragging');
-        dropHint.classList.add('show');
-      }
-    });
+  noteEl.addEventListener('dragenter', (e)=>{
+    e.preventDefault();
+    if(Array.from(e.dataTransfer.items||[]).some(it=>it.kind==='file')){
+      dragCounter++;
+      editorPane.classList.add('dragging');
+      dropHint.classList.add('show');
+    }
   });
-  ['dragleave','dragend'].forEach(evt=>{
-    textarea.addEventListener(evt, ()=>{
+  noteEl.addEventListener('dragover', (e)=> e.preventDefault());
+  noteEl.addEventListener('dragleave', ()=>{
+    dragCounter = Math.max(0, dragCounter - 1);
+    if(dragCounter === 0){
       editorPane.classList.remove('dragging');
       dropHint.classList.remove('show');
-    });
+    }
   });
-  textarea.addEventListener('drop', (e)=>{
+  noteEl.addEventListener('drop', (e)=>{
     e.preventDefault();
+    dragCounter = 0;
     editorPane.classList.remove('dragging');
     dropHint.classList.remove('show');
     const files = Array.from(e.dataTransfer.files || []).filter(f=>f.type.startsWith('image/'));
     if(!files.length) return;
-    const cursorPos = textarea.selectionStart;
+    const cursorPos = noteEl.selectionStart;
     files.forEach(file=>{
       const reader = new FileReader();
       reader.onload = ()=>{
         const tag = `![${file.name}](${reader.result})\n`;
-        const val = textarea.value;
-        textarea.value = val.slice(0, cursorPos) + tag + val.slice(cursorPos);
+        const val = noteEl.value;
+        noteEl.value = val.slice(0, cursorPos) + tag + val.slice(cursorPos);
         updateLineNumbers();
       };
       reader.readAsDataURL(file);
     });
   });
 
-  // ---------- Export all / Import ----------
+  // ---------- Export all / Import notes ----------
   document.getElementById('exportAllBtn').addEventListener('click', ()=>{
-    const payload = JSON.stringify(Object.assign({}, state, {mode}), null, 2);
+    const payload = JSON.stringify(state, null, 2);
     downloadFile('arynotes-backup-' + dateStamp() + '.json', payload, 'application/json');
   });
 
@@ -675,30 +913,44 @@ ${content}
     for(const file of files){
       const text = await file.text();
       if(file.name.toLowerCase().endsWith('.json')){
-        importJson(text);
+        importWorkspaceJson(text);
       } else {
         importTxt(file.name, text);
       }
     }
     e.target.value = '';
     persist();
+    renderModePanel();
     renderAll();
   });
 
-  function importJson(text){
+  function importWorkspaceJson(text){
     try{
       const data = JSON.parse(text);
-      if(Array.isArray(data.folders) && Array.isArray(data.notes)){
-        data.folders.forEach(f=>{
-          if(!state.folders.find(x=>x.id===f.id)) state.folders.push(f);
-        });
-        data.notes.forEach(n=>{
-          const newId = uid('n');
-          state.notes.push(Object.assign({}, n, {id:newId}));
-        });
-      } else {
+      if(!Array.isArray(data.folders) || !Array.isArray(data.notes)){
         alert('That JSON file doesn\'t look like an AryNotes backup.');
+        return;
       }
+      // bring in any custom modes referenced in the backup
+      (data.customModes || []).forEach(cm=>{
+        if(!state.customModes.find(x=>x.id===cm.id) && !BUILT_IN_MODES.find(x=>x.id===cm.id)){
+          state.customModes.push(cm);
+        }
+      });
+      // register a fallback custom mode for any orphan modeId we don't recognize
+      const knownIds = new Set(allModes().map(m=>m.id));
+      const orphanIds = new Set();
+      data.folders.forEach(f=>{ if(f.modeId && !knownIds.has(f.modeId)) orphanIds.add(f.modeId); });
+      orphanIds.forEach(oid=>{
+        state.customModes.push({id:oid, name:'Imported (' + oid + ')', builtIn:false, blurb:'Recovered from import', folders:[]});
+      });
+      data.folders.forEach(f=>{
+        if(!state.folders.find(x=>x.id===f.id)) state.folders.push(f);
+      });
+      data.notes.forEach(n=>{
+        const newId = uid('n');
+        state.notes.push(Object.assign({}, n, {id:newId}));
+      });
     }catch(err){
       alert('Could not parse JSON file: ' + err.message);
     }
@@ -706,7 +958,7 @@ ${content}
 
   function importTxt(filename, text){
     const folders = visibleFolders();
-    const folderId = currentFolderId !== 'ALL' ? currentFolderId : (folders[0] ? folders[0].id : (state.folders[0] ? state.folders[0].id : null));
+    const folderId = currentFolderId !== 'ALL' ? currentFolderId : (folders[0] ? folders[0].id : null);
     if(!folderId){ alert('Create a folder before importing text files.'); return; }
     const now = Date.now();
     const title = filename.replace(/\.(txt|md)$/i,'');
@@ -740,8 +992,7 @@ ${content}
   }
 
   // init
-  applyMode(mode);
-  clearEditor();
+  applyMode(state.activeModeId || 'freedom');
 })();
 </script>
 </body>
