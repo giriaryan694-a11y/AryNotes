@@ -265,10 +265,84 @@
   ::-webkit-scrollbar{width:9px;}
   ::-webkit-scrollbar-thumb{background:var(--border); border-radius:5px;}
 
-  @media (max-width:900px){
+  @media (max-width:900px) and (min-width:761px){
     .sidebar{width:170px;}
     .notes-col{width:220px;}
     .dropdown-panel{width:260px; right:-40px;}
+  }
+
+  /* ================= Mobile (phones) ================= */
+  .mobile-menu-btn, .mobile-tabbar, .mobile-back{display:none;}
+
+  @media (max-width:760px){
+    body{padding-bottom:56px;} /* room for bottom tab bar */
+
+    header{padding:8px 12px;}
+    .brand h1{font-size:14px;}
+    .brand .sub{display:none;}
+    .brand .mark{font-size:11px; padding:3px 6px;}
+
+    .mobile-menu-btn{
+      display:flex; align-items:center; justify-content:center;
+      width:36px; height:36px; font-size:17px; padding:0; flex-shrink:0;
+    }
+    .hdr-actions{
+      display:none; position:absolute; top:100%; left:0; right:0;
+      flex-direction:column; align-items:stretch; gap:6px; padding:10px 12px;
+      background:var(--panel); border-bottom:1px solid var(--border);
+      box-shadow:0 10px 20px rgba(0,0,0,.3); max-height:calc(100vh - 60px); overflow-y:auto;
+    }
+    .hdr-actions.open{display:flex;}
+    .hdr-actions .dropdown-wrap{width:100%;}
+    .hdr-actions .dropdown-trigger{width:100%; justify-content:space-between;}
+    .hdr-actions .dropdown-panel{position:static; width:100%; box-shadow:none; margin-top:6px;}
+    .hdr-actions .seg-group{width:100%;}
+    .hdr-actions .seg-group .seg-btn{flex:1;}
+    .hdr-actions > button{width:100%; text-align:left;}
+
+    /* stack the 3 panes full-screen, one visible at a time */
+    .layout{position:relative; overflow:hidden;}
+    .sidebar, .notes-col, .editor{
+      display:none; width:100% !important; border-right:none; position:absolute; inset:0;
+    }
+    .sidebar.mobile-active, .notes-col.mobile-active, .editor.mobile-active{display:flex;}
+    .sidebar{flex-direction:column;}
+
+    .mobile-back{
+      display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px;
+      background:transparent; border:none; color:var(--accent-2); padding:8px 4px; align-self:flex-start;
+    }
+    .notes-col .mobile-back, .editor .mobile-back{margin:4px 10px 0;}
+
+    .mobile-tabbar{
+      display:flex; position:fixed; bottom:0; left:0; right:0; height:56px; z-index:40;
+      background:var(--panel); border-top:1px solid var(--border);
+    }
+    .mobile-tabbar button{
+      flex:1; border:none; background:transparent; border-radius:0; color:var(--text-dim);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+      font-size:10.5px; font-family:var(--sans); padding:4px;
+    }
+    .mobile-tabbar button .tb-icon{font-size:17px; line-height:1;}
+    .mobile-tabbar button.active{color:var(--accent);}
+
+    .editor-toolbar{padding:8px 10px; gap:6px;}
+    .editor-toolbar select{max-width:120px; font-size:11.5px;}
+    .editor-toolbar button{padding:6px 8px; font-size:11.5px;}
+    .write-tabs button{padding:5px 8px;}
+    .editor-body{padding:10px;}
+    input#title{font-size:16px;}
+    .line-gutter, .preview-gutter{width:32px; font-size:12px;}
+    textarea#note{font-size:13.5px; padding:8px;}
+
+    .dropdown-panel:not(.hdr-actions .dropdown-panel){
+      position:fixed; top:auto; left:12px; right:12px; width:auto; bottom:66px;
+      max-height:60vh; overflow-y:auto;
+    }
+
+    button{padding:8px 12px; font-size:13.5px;}
+    .note-card{padding:12px;}
+    .folder-item{padding:11px 8px;}
   }
 </style>
 </head>
@@ -287,7 +361,9 @@
       <div class="sub">engagement notebook — local &amp; offline</div>
     </div>
   </div>
-  <div class="hdr-actions">
+  <button class="mobile-menu-btn icon-btn" id="mobileMenuBtn" title="Menu">☰</button>
+
+  <div class="hdr-actions" id="hdrActions">
 
     <div class="dropdown-wrap">
       <button class="dropdown-trigger" id="modeTrigger">
@@ -335,10 +411,10 @@
   </div>
 </header>
 
-<div class="layout">
+<div class="layout" id="layoutRoot">
 
   <!-- Folders -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="paneFolders">
     <div class="sidebar-title">
       <span>Folders</span>
       <button id="addFolderBtn" title="New folder">＋</button>
@@ -351,7 +427,8 @@
   </aside>
 
   <!-- Notes list -->
-  <section class="notes-col">
+  <section class="notes-col" id="paneNotes">
+    <button class="mobile-back" id="backToFolders">‹ Folders</button>
     <div class="notes-col-header">
       <input class="search-box" id="searchBox" placeholder="Search notes…" type="text">
     </div>
@@ -359,7 +436,8 @@
   </section>
 
   <!-- Editor -->
-  <main class="editor" id="editorWrap">
+  <main class="editor" id="paneEditor">
+    <button class="mobile-back" id="backToNotes">‹ Notes</button>
     <div class="editor-toolbar">
       <select id="folderSelect"></select>
       <span class="spacer"></span>
@@ -390,6 +468,12 @@
     </div>
   </main>
 
+</div>
+
+<div class="mobile-tabbar" id="mobileTabbar">
+  <button data-tab="folders"><span class="tb-icon">📁</span>Folders</button>
+  <button data-tab="notes"><span class="tb-icon">📝</span>Notes</button>
+  <button data-tab="editor"><span class="tb-icon">✎</span>Editor</button>
 </div>
 
 <footer>AryNotes · Made by Aryan Giri</footer>
@@ -656,6 +740,7 @@
     renderModePanel();
     renderAll();
     clearEditor();
+    if(typeof isMobile === 'function' && isMobile()) setMobileView('folders');
   }
 
   function visibleFolders(){
@@ -682,6 +767,46 @@
   document.addEventListener('keydown', (e)=>{
     if(e.key === 'Escape') document.querySelectorAll('.dropdown-panel.open').forEach(p=>p.classList.remove('open'));
   });
+
+  // ---------- Mobile: hamburger menu + 3-pane navigation ----------
+  const mobileQuery = window.matchMedia('(max-width:760px)');
+  function isMobile(){ return mobileQuery.matches; }
+
+  const hdrActions = document.getElementById('hdrActions');
+  document.getElementById('mobileMenuBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    hdrActions.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(isMobile() && hdrActions.classList.contains('open') && !hdrActions.contains(e.target) && e.target.id !== 'mobileMenuBtn'){
+      hdrActions.classList.remove('open');
+    }
+  });
+
+  const panes = {
+    folders: document.getElementById('paneFolders'),
+    notes: document.getElementById('paneNotes'),
+    editor: document.getElementById('paneEditor'),
+  };
+  const tabButtons = document.querySelectorAll('#mobileTabbar button');
+
+  function setMobileView(view){
+    Object.keys(panes).forEach(k=>{
+      panes[k].classList.toggle('mobile-active', k===view);
+    });
+    tabButtons.forEach(b=> b.classList.toggle('active', b.dataset.tab===view));
+  }
+  tabButtons.forEach(b=>{
+    b.addEventListener('click', ()=> setMobileView(b.dataset.tab));
+  });
+  document.getElementById('backToFolders').addEventListener('click', ()=> setMobileView('folders'));
+  document.getElementById('backToNotes').addEventListener('click', ()=> setMobileView('notes'));
+
+  // default pane on load / on resize into mobile
+  function initMobileViewIfNeeded(){
+    if(isMobile()) setMobileView('folders');
+  }
+  mobileQuery.addEventListener ? mobileQuery.addEventListener('change', initMobileViewIfNeeded) : mobileQuery.addListener(initMobileViewIfNeeded);
 
   function renderModePanel(){
     const defaultList = document.getElementById('defaultModeList');
@@ -943,6 +1068,7 @@
         if(e.target.classList.contains('del-folder')) return;
         currentFolderId = f.id;
         renderAll();
+        if(isMobile()) setMobileView('notes');
       });
       el.querySelector('.del-folder').addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -964,6 +1090,7 @@
   document.getElementById('allNotesBtn').addEventListener('click', ()=>{
     currentFolderId = 'ALL';
     renderAll();
+    if(isMobile()) setMobileView('notes');
   });
 
   document.getElementById('addFolderBtn').addEventListener('click', ()=>{
@@ -1026,7 +1153,10 @@
         <div class="n-meta"><span>${f ? escapeHtml(f.name) : '—'}</span><span>${fmtDate(n.updatedAt)}</span></div>
         <div class="n-preview">${escapeHtml((n.content||'').replace(/!\[.*?\]\(.*?\)/g,'[image] ').slice(0,80).replace(/\n/g,' '))}</div>
       `;
-      card.addEventListener('click', ()=> openNote(n.id));
+      card.addEventListener('click', ()=>{
+        openNote(n.id);
+        if(isMobile()) setMobileView('editor');
+      });
       wrap.appendChild(card);
     });
   }
@@ -1065,7 +1195,10 @@
     updateLineNumbers();
   }
 
-  document.getElementById('newBtn').addEventListener('click', clearEditor);
+  document.getElementById('newBtn').addEventListener('click', ()=>{
+    clearEditor();
+    if(isMobile()) setMobileView('editor');
+  });
 
   document.getElementById('saveBtn').addEventListener('click', ()=>{
     const title = document.getElementById('title').value.trim();
@@ -1307,6 +1440,7 @@ ${content}
   renderStorageStatus();
   applyMode(state.activeModeId || 'freedom');
   tryReconnectFolderSilently();
+  initMobileViewIfNeeded();
 })();
 </script>
 </body>
