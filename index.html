@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AryNotes — Engagement Notebook</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
   :root{
     --bg:#0d1117; --panel:#141b24; --panel-2:#0f1620; --border:#232d3a;
@@ -254,6 +255,31 @@
   #preview img{max-width:100%; border-radius:5px; margin:6px 0; border:1px solid var(--border); display:block;}
   #preview code{background:var(--panel-2); padding:1px 5px; border-radius:3px; font-family:var(--mono); font-size:.92em;}
   #preview p{margin:0 0 10px;}
+  #preview h1,#preview h2,#preview h3,#preview h4,#preview h5,#preview h6{margin:16px 0 8px; line-height:1.3; font-weight:700;}
+  #preview h1{font-size:1.55em;} #preview h2{font-size:1.3em;} #preview h3{font-size:1.15em;}
+  #preview h4,#preview h5,#preview h6{font-size:1em; color:var(--text-dim);}
+  #preview ul, #preview ol{margin:0 0 10px 22px; padding:0;}
+  #preview li{margin:3px 0;}
+  #preview blockquote{margin:0 0 10px; padding:6px 12px; border-left:3px solid var(--accent); color:var(--text-dim); background:var(--panel-2); border-radius:0 4px 4px 0;}
+  #preview hr{border:none; border-top:1px solid var(--border); margin:16px 0;}
+  #preview a{color:var(--accent-2);}
+  #preview pre{background:var(--panel-2); border:1px solid var(--border); border-radius:5px; padding:10px; overflow-x:auto; margin:0 0 10px;}
+  #preview pre code{background:none; padding:0;}
+  #preview table{border-collapse:collapse; width:100%; margin:0 0 12px; font-size:12.5px; display:block; overflow-x:auto;}
+  #preview th, #preview td{border:1px solid var(--border); padding:5px 9px; text-align:left; white-space:nowrap;}
+  #preview th{background:var(--panel-2); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.04em;}
+  #preview video{max-width:100%; border-radius:6px; display:block; background:#000;}
+  .attach-card{border:1px solid var(--border); border-radius:6px; overflow:hidden; margin:8px 0; background:var(--panel-2);}
+  .attach-card video{width:100%; display:block;}
+  .attach-card iframe{width:100%; height:360px; border:none; display:block; background:#fff;}
+  .attach-name{padding:6px 10px; font-family:var(--mono); font-size:11px; color:var(--text-dim); border-top:1px solid var(--border);}
+  .attach-name a{color:var(--accent-2);}
+  .attach-file a{
+    display:inline-flex; align-items:center; gap:6px; padding:7px 11px; margin:4px 0;
+    border:1px solid var(--border); border-radius:5px; background:var(--panel-2);
+    font-family:var(--mono); font-size:12px; text-decoration:none; color:var(--text);
+  }
+  .attach-file a:hover{border-color:var(--accent); color:var(--accent);}
 
   .meta-line{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
 
@@ -456,9 +482,9 @@
       <div class="content-area">
         <div class="editor-pane" id="editorPane">
           <div class="line-gutter" id="lineGutter"><div>1</div></div>
-          <textarea id="note" placeholder="Findings, commands, output, evidence notes… drag & drop images here." spellcheck="false"></textarea>
+          <textarea id="note" placeholder="Findings, commands, output, evidence notes… drag & drop images, video, PDF, CSV or XLSX files here." spellcheck="false"></textarea>
         </div>
-        <div class="drop-hint" id="dropHint">drop image to embed — ![name](inline)</div>
+        <div class="drop-hint" id="dropHint">drop to attach — images, video, PDF, CSV, XLSX, or any file</div>
         <div class="preview-pane" id="previewPane">
           <div class="preview-gutter" id="previewGutter"><div>1</div></div>
           <div id="preview"></div>
@@ -926,6 +952,38 @@
     await exportModeZip();
   });
 
+  function extractAttachmentsForZip(content, folderZip, noteTitle){
+    let idx = 0;
+    function nextName(ext){ idx++; return sanitizeFilename(noteTitle || 'note') + '_att' + idx + (ext ? '.' + ext : ''); }
+
+    content = content.replace(/!\[video:([^\]]*)\]\((data:video\/(\w+);base64,[^)]+)\)/g, (full, alt, dataUri, ext)=>{
+      const base64 = dataUri.split(',')[1];
+      const name = nextName(ext);
+      folderZip.file(name, base64, {base64:true});
+      return `![video:${alt}](./${name})`;
+    });
+    content = content.replace(/!\[([^\]]*)\]\((data:image\/(\w+);base64,[^)]+)\)/g, (full, alt, dataUri, ext)=>{
+      const base64 = dataUri.split(',')[1];
+      const name = nextName(ext);
+      folderZip.file(name, base64, {base64:true});
+      return `![${alt}](./${name})`;
+    });
+    content = content.replace(/\[pdf:([^\]]*)\]\((data:application\/pdf;base64,[^)]+)\)/g, (full, alt, dataUri)=>{
+      const base64 = dataUri.split(',')[1];
+      const name = nextName('pdf');
+      folderZip.file(name, base64, {base64:true});
+      return `[pdf:${alt}](./${name})`;
+    });
+    content = content.replace(/\[file:([^\]]*)\]\((data:[^;]+;base64,[^)]+)\)/g, (full, alt, dataUri)=>{
+      const base64 = dataUri.split(',')[1];
+      const extMatch = alt.match(/\.(\w+)$/);
+      const name = nextName(extMatch ? extMatch[1] : 'bin');
+      folderZip.file(name, base64, {base64:true});
+      return `[file:${alt}](./${name})`;
+    });
+    return content;
+  }
+
   async function exportModeZip(){
     if(typeof JSZip === 'undefined'){
       alert('The zip library is still loading (or blocked) — try again in a second, or check your internet connection.');
@@ -942,15 +1000,7 @@
       metaFolders.push({name:f.name, color:f.color});
       const notes = state.notes.filter(n=>n.folderId===f.id);
       notes.forEach(n=>{
-        let content = n.content || '';
-        let imgIndex = 0;
-        content = content.replace(/!\[([^\]]*)\]\((data:image\/(\w+);base64,[^)]+)\)/g, (full, alt, dataUri, ext)=>{
-          imgIndex++;
-          const base64 = dataUri.split(',')[1];
-          const imgName = sanitizeFilename(n.title || 'note') + '_img' + imgIndex + '.' + ext;
-          folderZip.file(imgName, base64, {base64:true});
-          return `![${alt}](./${imgName})`;
-        });
+        let content = extractAttachmentsForZip(n.content || '', folderZip, n.title);
         const header = `Title: ${n.title}\nTags: ${(n.tags||[]).join(', ')}\nCreated: ${fmtDate(n.createdAt)}\nUpdated: ${fmtDate(n.updatedAt)}\n\n`;
         const fname = sanitizeFilename(n.title || 'untitled') + '.md';
         folderZip.file(fname, header + content);
@@ -965,6 +1015,52 @@
     a.href = url; a.download = sanitizeFilename(m.name) + '.zip';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  const ATTACHMENT_MIME_BY_EXT = {
+    png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', webp:'image/webp', svg:'image/svg+xml',
+    mp4:'video/mp4', webm:'video/webm', mov:'video/quicktime',
+    pdf:'application/pdf',
+    csv:'text/csv', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  };
+
+  async function reembedAttachmentsFromZip(content, zip, rootPrefix, folderName){
+    async function fetchB64(file){
+      const entry = zip.file(rootPrefix + folderName + '/' + file);
+      return entry ? await entry.async('base64') : null;
+    }
+    async function replaceAllAsync(regex, fn){
+      const matches = [...content.matchAll(regex)];
+      for(const m of matches){
+        const replacement = await fn(m);
+        if(replacement !== null) content = content.split(m[0]).join(replacement);
+      }
+    }
+
+    await replaceAllAsync(/!\[video:([^\]]*)\]\(\.\/([^)]+)\)/g, async ([full, alt, file])=>{
+      const b64 = await fetchB64(file);
+      if(!b64) return null;
+      const ext = (file.split('.').pop()||'mp4').toLowerCase();
+      return `![video:${alt}](data:${ATTACHMENT_MIME_BY_EXT[ext]||'video/mp4'};base64,${b64})`;
+    });
+    await replaceAllAsync(/!\[([^\]]*)\]\(\.\/([^)]+)\)/g, async ([full, alt, file])=>{
+      const b64 = await fetchB64(file);
+      if(!b64) return null;
+      const ext = (file.split('.').pop()||'png').toLowerCase();
+      return `![${alt}](data:${ATTACHMENT_MIME_BY_EXT[ext]||'image/png'};base64,${b64})`;
+    });
+    await replaceAllAsync(/\[pdf:([^\]]*)\]\(\.\/([^)]+)\)/g, async ([full, alt, file])=>{
+      const b64 = await fetchB64(file);
+      if(!b64) return null;
+      return `[pdf:${alt}](data:application/pdf;base64,${b64})`;
+    });
+    await replaceAllAsync(/\[file:([^\]]*)\]\(\.\/([^)]+)\)/g, async ([full, alt, file])=>{
+      const b64 = await fetchB64(file);
+      if(!b64) return null;
+      const ext = (file.split('.').pop()||'bin').toLowerCase();
+      return `[file:${alt}](data:${ATTACHMENT_MIME_BY_EXT[ext]||'application/octet-stream'};base64,${b64})`;
+    });
+    return content;
   }
 
   async function importModeZip(file){
@@ -1019,19 +1115,7 @@
         const headerMatch = text.match(/^Title:.*\n(?:Tags:.*\n)?(?:Created:.*\n)?(?:Updated:.*\n)?\n([\s\S]*)$/);
         if(headerMatch) content = headerMatch[1];
 
-        const imgRefRegex = /!\[([^\]]*)\]\(\.\/([^)]+)\)/g;
-        let m2, imgMatches = [];
-        while((m2 = imgRefRegex.exec(content)) !== null) imgMatches.push(m2);
-        for(const r of imgMatches){
-          const [full, alt, imgFile] = r;
-          const imgPath = rootPrefix + folderName + '/' + imgFile;
-          const imgEntry = zip.file(imgPath);
-          if(imgEntry){
-            const base64 = await imgEntry.async('base64');
-            const ext = (imgFile.split('.').pop() || 'png').toLowerCase();
-            content = content.split(full).join(`![${alt}](data:image/${ext};base64,${base64})`);
-          }
-        }
+        content = await reembedAttachmentsFromZip(content, zip, rootPrefix, folderName);
 
         const now = Date.now();
         state.notes.push({ id: uid('n'), title, content, tags:['imported'], folderId, createdAt: now, updatedAt: now });
@@ -1153,7 +1237,12 @@
       card.innerHTML = `
         <div class="n-title">${escapeHtml(n.title || 'Untitled')}</div>
         <div class="n-meta"><span>${f ? escapeHtml(f.name) : '—'}</span><span>${fmtDate(n.updatedAt)}</span></div>
-        <div class="n-preview">${escapeHtml((n.content||'').replace(/!\[.*?\]\(.*?\)/g,'[image] ').slice(0,80).replace(/\n/g,' '))}</div>
+        <div class="n-preview">${escapeHtml((n.content||'')
+          .replace(/!\[video:[^\]]*\]\([^)]*\)/g,'[video] ')
+          .replace(/!\[[^\]]*\]\([^)]*\)/g,'[image] ')
+          .replace(/\[pdf:[^\]]*\]\([^)]*\)/g,'[pdf] ')
+          .replace(/\[file:[^\]]*\]\([^)]*\)/g,'[file] ')
+          .slice(0,80).replace(/\n/g,' '))}</div>
       `;
       card.addEventListener('click', ()=>{
         openNote(n.id);
@@ -1264,15 +1353,109 @@ ${content}
   document.getElementById('writeTab').addEventListener('click', ()=> setPreview(false));
   document.getElementById('previewTab').addEventListener('click', ()=> setPreview(true));
 
-  function mdToHtml(src){
-    let html = escapeHtml(src);
-    html = html.replace(/!\[([^\]]*)\]\((data:[^)]+|https?:[^)]+)\)/g, (m, alt, url)=>{
-      return `<img src="${url}" alt="${alt}">`;
+  function renderTables(html){
+    const lines = html.split('\n');
+    const out = [];
+    let i = 0;
+    while(i < lines.length){
+      if(/^\|.*\|$/.test(lines[i]) && lines[i+1] && /^\|?[\s:-]+\|[\s:|-]*$/.test(lines[i+1])){
+        const header = lines[i].split('|').slice(1,-1).map(c=>c.trim());
+        i += 2;
+        const body = [];
+        while(i < lines.length && /^\|.*\|$/.test(lines[i])){
+          body.push(lines[i].split('|').slice(1,-1).map(c=>c.trim()));
+          i++;
+        }
+        let t = '<table><thead><tr>' + header.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+        body.forEach(r=>{ t += '<tr>' + header.map((_,ci)=>`<td>${r[ci]||''}</td>`).join('') + '</tr>'; });
+        t += '</tbody></table>';
+        out.push(t);
+      } else {
+        out.push(lines[i]);
+        i++;
+      }
+    }
+    return out.join('\n');
+  }
+
+  function renderLists(html){
+    const lines = html.split('\n');
+    const out = [];
+    let mode = null;
+    lines.forEach(line=>{
+      const ul = line.match(/^[-*] (.*)$/);
+      const ol = line.match(/^\d+\. (.*)$/);
+      if(ul){
+        if(mode !== 'ul'){ if(mode) out.push(`</${mode}>`); out.push('<ul>'); mode='ul'; }
+        out.push(`<li>${ul[1]}</li>`);
+      } else if(ol){
+        if(mode !== 'ol'){ if(mode) out.push(`</${mode}>`); out.push('<ol>'); mode='ol'; }
+        out.push(`<li>${ol[1]}</li>`);
+      } else {
+        if(mode){ out.push(`</${mode}>`); mode=null; }
+        out.push(line);
+      }
     });
+    if(mode) out.push(`</${mode}>`);
+    return out.join('\n');
+  }
+
+  function mdToHtml(src){
+    // pull out fenced code blocks first so nothing inside them gets touched
+    const codeBlocks = [];
+    let working = src.replace(/```([\s\S]*?)```/g, (m, code)=>{
+      codeBlocks.push(code.replace(/^\n/,''));
+      return `\u0000CB${codeBlocks.length-1}\u0000`;
+    });
+
+    let html = escapeHtml(working);
+
+    // rich attachments (before generic image/link parsing)
+    html = html.replace(/!\[video:([^\]]*)\]\((data:video\/[^)]+|\.\/[^)]+)\)/g, (m, name, url)=>
+      `<div class="attach-card"><video controls src="${url}"></video><div class="attach-name">🎬 ${name}</div></div>`);
+    html = html.replace(/\[pdf:([^\]]*)\]\((data:application\/pdf[^)]+|\.\/[^)]+)\)/g, (m, name, url)=>
+      `<div class="attach-card"><iframe src="${url}"></iframe><div class="attach-name">📄 ${name} — <a href="${url}" download="${name}">Download</a></div></div>`);
+    html = html.replace(/\[file:([^\]]*)\]\((data:[^)]+|\.\/[^)]+)\)/g, (m, name, url)=>
+      `<div class="attach-file"><a href="${url}" download="${name}">📎 ${name}</a></div>`);
+    html = html.replace(/!\[([^\]]*)\]\((data:image[^)]+|https?:[^)]+|\.\/[^)]+)\)/g, (m, alt, url)=>
+      `<img src="${url}" alt="${alt}">`);
+
+    // headers
+    html = html.replace(/^###### (.*)$/gm, '<h6>$1</h6>');
+    html = html.replace(/^##### (.*)$/gm, '<h5>$1</h5>');
+    html = html.replace(/^#### (.*)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+
+    // blockquote (escaped '>' becomes '&gt;')
+    html = html.replace(/^&gt; ?(.*)$/gm, '<blockquote>$1</blockquote>');
+
+    // horizontal rule
+    html = html.replace(/^(-{3,}|\*{3,})$/gm, '<hr>');
+
+    // tables, then lists
+    html = renderTables(html);
+    html = renderLists(html);
+
+    // links
+    html = html.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+    // inline formatting
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    html = html.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+
+    // paragraphs (skip anything already block-level)
+    html = html.split(/\n{2,}/).map(block=>{
+      const t = block.trim();
+      if(/^<(h\d|ul|ol|li|blockquote|hr|div|table|pre)/i.test(t) || t === '') return block;
+      return `<p>${block.replace(/\n/g,'<br>')}</p>`;
+    }).join('');
+
+    // restore code blocks
+    html = html.replace(/\u0000CB(\d+)\u0000/g, (m, i)=> `<pre><code>${escapeHtml(codeBlocks[i])}</code></pre>`);
+
     return html;
   }
   function renderPreview(){
@@ -1327,25 +1510,121 @@ ${content}
       dropHint.classList.remove('show');
     }
   });
-  noteEl.addEventListener('drop', (e)=>{
+  noteEl.addEventListener('drop', async (e)=>{
     e.preventDefault();
     dragCounter = 0;
     editorPane.classList.remove('dragging');
     dropHint.classList.remove('show');
-    const files = Array.from(e.dataTransfer.files || []).filter(f=>f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files || []);
     if(!files.length) return;
-    const cursorPos = noteEl.selectionStart;
-    files.forEach(file=>{
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        const tag = `![${file.name}](${reader.result})\n`;
+    let pos = noteEl.selectionStart;
+    for(const file of files){
+      const md = await buildAttachmentMarkdown(file);
+      if(md){
         const val = noteEl.value;
-        noteEl.value = val.slice(0, cursorPos) + tag + val.slice(cursorPos);
-        updateLineNumbers();
-      };
+        noteEl.value = val.slice(0, pos) + md + val.slice(pos);
+        pos += md.length;
+      }
+    }
+    updateLineNumbers();
+  });
+
+  function fileToDataURL(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-  });
+  }
+
+  // minimal CSV parser that respects quoted fields
+  function parseCSV(text){
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for(let i=0;i<text.length;i++){
+      const c = text[i];
+      if(inQuotes){
+        if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else inQuotes = false; }
+        else field += c;
+      } else {
+        if(c === '"') inQuotes = true;
+        else if(c === ','){ row.push(field); field=''; }
+        else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+        else if(c === '\r'){ /* skip */ }
+        else field += c;
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function csvToMarkdownTable(csvText){
+    const rows = parseCSV(csvText).filter(r=> r.length && r.some(c=>String(c).trim()!==''));
+    if(!rows.length) return '*(empty spreadsheet)*';
+    const header = rows[0];
+    const body = rows.slice(1, 51);
+    let md = '| ' + header.join(' | ') + ' |\n';
+    md += '| ' + header.map(()=>'---').join(' | ') + ' |\n';
+    body.forEach(r=>{ md += '| ' + header.map((_,i)=> (r[i]||'')).join(' | ') + ' |\n'; });
+    if(rows.length - 1 > 50) md += `\n*(showing first 50 of ${rows.length-1} rows)*\n`;
+    return md;
+  }
+
+  const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024; // keep browser storage healthy
+
+  async function buildAttachmentMarkdown(file){
+    const type = file.type || '';
+    const lower = file.name.toLowerCase();
+
+    if(type.startsWith('image/')){
+      const dataUri = await fileToDataURL(file);
+      return `![${file.name}](${dataUri})\n`;
+    }
+    if(type.startsWith('video/')){
+      if(file.size > MAX_ATTACHMENT_BYTES){
+        alert(`"${file.name}" is ${(file.size/1024/1024).toFixed(1)}MB — too large to embed inline (4MB limit). Try a shorter clip or lower resolution, or use Local Folder storage from ⚙ for bigger files.`);
+        return null;
+      }
+      const dataUri = await fileToDataURL(file);
+      return `![video:${file.name}](${dataUri})\n`;
+    }
+    if(type === 'application/pdf' || lower.endsWith('.pdf')){
+      if(file.size > MAX_ATTACHMENT_BYTES){
+        alert(`"${file.name}" is ${(file.size/1024/1024).toFixed(1)}MB — too large to embed inline (4MB limit). Try a smaller PDF or use Local Folder storage from ⚙.`);
+        return null;
+      }
+      const dataUri = await fileToDataURL(file);
+      return `[pdf:${file.name}](${dataUri})\n`;
+    }
+    if(lower.endsWith('.csv') || type === 'text/csv'){
+      const text = await file.text();
+      return `\n**${file.name}**\n\n${csvToMarkdownTable(text)}\n\n`;
+    }
+    if(lower.endsWith('.xlsx') || lower.endsWith('.xls') || type.includes('spreadsheet')){
+      if(typeof XLSX === 'undefined'){
+        alert('Spreadsheet support is still loading (or blocked) — wait a second and try again.');
+        return null;
+      }
+      try{
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, {type:'array'});
+        const sheetName = wb.SheetNames[0];
+        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+        return `\n**${file.name}** (sheet: ${sheetName})\n\n${csvToMarkdownTable(csv)}\n\n`;
+      }catch(err){
+        alert('Could not read that spreadsheet: ' + err.message);
+        return null;
+      }
+    }
+    // generic fallback: any other file type, embedded as a downloadable attachment
+    if(file.size > MAX_ATTACHMENT_BYTES){
+      alert(`"${file.name}" is ${(file.size/1024/1024).toFixed(1)}MB — too large to attach inline (4MB limit). Try a smaller file.`);
+      return null;
+    }
+    const dataUri = await fileToDataURL(file);
+    return `[file:${file.name}](${dataUri})\n`;
+  }
 
   // ---------- Export all / Import notes ----------
   document.getElementById('exportAllBtn').addEventListener('click', ()=>{
