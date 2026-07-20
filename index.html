@@ -1140,7 +1140,9 @@
     const notes = visibleNotes();
     wrap.innerHTML = '';
     if(notes.length === 0){
-      wrap.innerHTML = `<div class="empty-hint">No notes here yet.<br>Click "＋ New" to start writing.</div>`;
+      wrap.innerHTML = isMobile()
+        ? `<div class="empty-hint">No notes here yet.<br>Tap the <b>✎ Editor</b> tab below to write a new note, then <b>Save</b> it.</div>`
+        : `<div class="empty-hint">No notes here yet.<br>Click "＋ New" to start writing.</div>`;
       return;
     }
     notes.forEach(n=>{
