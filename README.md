@@ -2,232 +2,160 @@
 
 **Local, offline engagement notebook for authorized penetration testing workflows and general note-keeping.**
 
-AryNotes is a lightweight, browser-based note-taking application designed to securely store findings, commands, and evidence during authorized security assessments. All data remains strictly on your device—no cloud, no servers, 100% offline.
+AryNotes is a lightweight, browser-based note-taking application for securely logging findings, commands, and evidence during authorized security assessments — or just for study notes and journaling. All data stays on your device by default. No cloud, no accounts, no tracking.
 
 ---
 
 ## Quick Start
 
-### Open AryNotes
 Visit: **https://giriaryan694-a11y.github.io/AryNotes/**
 
-No installation, no downloads required. Everything runs in your browser.
+No installation. Everything runs in your browser.
 
-### Choose Your Mode
-- **Freedom Mode** — Blank slate. Build your own folders for study, journaling, general use
-- **Pentest Mode** — Pre-loaded with 8 standard engagement folders (Recon, Enumeration, Vulnerabilities, Exploitation, Post-Exploitation, Credentials, Evidence, Reporting)
-
-### Create a Note
-1. Select or create a folder from the sidebar
-2. Click **＋ New** to start a fresh note
-3. Enter a title and write your findings
-4. Click **💾 Save** to persist to your browser
+1. Pick a **Mode** (top right) — this sets up your folder structure
+2. Click a folder, then **＋ New** to start a note
+3. Write, then **💾 Save**
 
 ---
 
-## Features at a Glance
+## Modes
 
-✅ **Organized by Folders** — Categorize findings by engagement phase, client, or topic  
-✅ **Full-Text Search** — Find notes instantly across all folders  
-✅ **Markdown-Lite Rendering** — Write markdown, preview inline (images, bold, italic, code)  
-✅ **Drag-and-Drop Images** — Drop screenshots directly; embedded as base64, no uploads  
-✅ **Three Themes** — Dark, Light, Eye-saver (amber) for reduced eye strain  
-✅ **Import/Export** — Full JSON backups for archival or transfer between devices  
-✅ **100% Offline & Local** — Zero network calls, 100% private, browser storage only  
+Modes give you a ready-made folder structure for the kind of work you're doing. Switch anytime from the **Mode ▾** menu in the header, which splits into two sections:
 
----
+**Default modes**
+| Mode | Folders |
+|---|---|
+| **Freedom Mode** | Blank — build your own, for study/journaling/general notes |
+| **Pentest Mode** | Reconnaissance, Enumeration, Vulnerabilities, Exploitation, Post-Exploitation, Credentials, Evidence, Reporting |
+| **Bug Bounty Mode** | Scope & Program Rules, Recon, Asset & Subdomain Enum, Vulnerabilities, Proof of Concept, Reports Submitted, Triage & Payouts |
+| **OSINT Mode** | Target Profile, Social Media, Public Records, Infrastructure & DNS, Leaks & Breach Data, Documentation |
+| **OffSec Plan Mode** | RoE, CONOPS, Mission Plan, Communication Plan, Operation Plan, Resources Plan, Reporting Plan, Intelligence Collection Plan, Risk Assessment, Kill Chain / Attack Path, Rollback / Recovery Plan |
 
-## Pentest Mode Folders
+OffSec Plan Mode also drops a pinned **"ℹ️ About"** note into every folder explaining what that planning document is, why it matters, and what to put in it — real engagement-planning reference material, not just empty folders. Don't need them? Toggle **👁 Hide starter notes** in the sidebar to tuck them away without deleting them.
 
-When you enable Pentest Mode, you get these 8 default folders:
-
-| Folder | Purpose |
-|--------|---------|
-| **Reconnaissance** | Target identification, OSINT, passive gathering |
-| **Enumeration** | Active scanning, service discovery, version detection |
-| **Vulnerabilities** | CVEs found, misconfigurations, exploitable weaknesses |
-| **Exploitation** | Successful attacks, proof of concept, shell access |
-| **Post-Exploitation** | Lateral movement, privilege escalation, persistence |
-| **Credentials** | Harvested usernames, passwords, API keys |
-| **Evidence** | Screenshots, logs, artifacts for reporting |
-| **Reporting** | Client summary, risk ratings, remediation steps |
+**Installed / created modes**
+- **＋ Create custom mode** — name it, optionally list starter folders
+- **⇧ Import mode** — load a `.json` template or a `.zip` (full folders + notes + attachments) someone shares with you
+- **⇩ Export mode template (.json)** — share just your folder structure
+- **⇩ Export mode + notes (.zip)** — share the real folders, notes as `.md` files, and attachments, all zipped
 
 ---
 
-## How to Use
+## Writing Notes
 
-### Write a Note
-- **Title** — Required; used for search and identification
-- **Tags** — Comma-separated keywords (e.g., `recon, smb, critical`)
-- **Content** — Monospace textarea for commands, output, findings
-- **Folder** — Assign to organize by engagement phase or topic
+- **Title, tags, folder** — required basics; tags are comma-separated
+- **Line numbers** — a code-editor-style gutter tracks lines as you type, in both Write and Preview
+- **Write / Preview tabs** — Preview renders full markdown: headers, bold/italic, `code`, fenced ```code blocks```, bullet & numbered lists, tables, blockquotes, horizontal rules, and links. Your Write/Preview choice sticks as you switch between notes — it won't reset to Write every time you open something.
 
-### Markdown-Lite Support
-```
-**bold text**  →  **bold**
-*italic text*  →  *italic*
-`code text`    →  code block
-![alt](url)    →  inline image
-```
+### Attachments (drag & drop into the note)
+Drop a file straight into the editor and it embeds inline — no separate upload step:
 
-### Drag & Drop Images
-Simply drag an image file onto the note textarea. It's embedded as base64, stored locally—no external uploads.
+| File type | What happens |
+|---|---|
+| Image (png/jpg/gif/webp) | Embedded inline, shows in Preview |
+| Video (mp4/webm/mov) | Embedded as a playable video in Preview (4MB cap) |
+| PDF | Embedded as an in-line viewer with a Download link (4MB cap) |
+| CSV | Parsed and inserted as a real markdown table (up to 50 rows shown) |
+| XLSX | First sheet parsed and inserted as a markdown table |
+| Anything else | Added as a downloadable attachment link (4MB cap) |
 
-### Search Notes
-Type in the search box to filter by title, content, or tags. Search works within the selected folder or across all notes.
+The size caps exist because everything is stored as base64 in browser storage — see [Storage](#storage) below for a way around that.
 
-### Preview Mode
-Toggle between **Write** (raw text) and **Preview** (rendered markdown + images) using the tabs above the textarea.
+---
+
+## Organizing: Pinning & Reordering
+
+- **📌 Pin** — every folder and note has a pin toggle. Pinned items get their own section at the top, above the rest
+- **⇅ Reorder** — click the ⇅ button above the folder list or note list to enter edit mode, then drag items by the ⋮⋮ handle to rearrange them. Click again ("✓ Done") to lock it in
+- Pinning and manual order are independent — pin something to keep it visible, reorder to control the sequence within pinned or unpinned groups
+
+---
+
+## Search
+
+Type in the search box to filter by title, content, or tags — scoped to the current folder or across **≡ All Notes**.
 
 ---
 
 ## Import & Export
 
-### Export Your Workspace
-Click **⇩ Export all** to download a complete JSON backup. Use this to:
-- Archive engagement notes
-- Transfer between machines or browsers
-- Back up before clearing browser storage
-- Share folder structure with colleagues
+**Notes / full workspace**
+- **⇩ Export all** — full JSON backup (folders, notes, custom modes)
+- **⇧ Import notes** — merge a `.json` backup, or drop in individual `.txt`/`.md` files as new notes
 
-### Export a Single Note
-Click **⬇ .txt** to download the current note as a text file with metadata (title, folder, tags, timestamp).
+**Per-note**
+- **⬇ .txt** — download the open note with a metadata header
 
-### Import Notes
-Click **⇧ Import**, then select:
-- **JSON files** — Full workspace backup (merges without overwriting)
-- **TXT/MD files** — Each becomes a single note in your selected folder
+**Modes** (see the Modes section above for the `.json` vs `.zip` options)
 
 ---
 
 ## Themes
 
-Toggle in the header (top right):
-
-- **Dark** — Default; reduces eye strain in low-light
-- **Light** — High contrast for daylight or accessibility
-- **Eye-saver** — Warm amber background for extended use
-
-Your theme preference is saved automatically.
+**Dark** (default) · **Light** · **Eye-saver** (warm amber) — toggle in the header, saved automatically.
 
 ---
 
-## Keyboard Shortcuts & Quick Actions
+## Storage
 
-| Action | How |
-|--------|-----|
-| Save note | Click **💾 Save** or `Ctrl+S` (browser) |
-| New note | Click **＋ New** |
-| Delete note | Click **🗑 Delete** (appears after opening a note) |
-| Download as .txt | Click **⬇ .txt** |
-| Toggle Preview | Click **Preview** tab |
-| Search | Type in search box (real-time filtering) |
-| Switch folder | Click folder in sidebar |
-| View all notes | Click **≡ All Notes** |
+By default, AryNotes saves to your browser's local storage (device + browser-specific, nothing leaves your machine).
+
+Click **⚙** in the header for storage options:
+- **📁 Save notes to a folder on this device** — uses the File System Access API to write `arynotes-data.json` into a real folder you pick, with an automatic browser-storage backup kept alongside it. Useful for larger attachments, syncing via your own cloud drive folder, or just keeping notes as a plain file you control. Chromium browsers only (Chrome/Edge/Brave) — Firefox/Safari stay on browser storage
+- **🌐 Switch back to browser storage** — reverts without touching your folder file
+- If your browser closes and reopens with permission already granted, it reconnects silently; otherwise a **🔓 Reconnect folder** bar appears at the top
 
 ---
 
-## Local Storage & Data Safety
+## Mobile
 
-### What Happens to Your Notes
-- Stored in your browser's `localStorage` (no network, no cloud)
-- Persists across browser sessions and restarts
-- Cleared only if you explicitly clear browser cache/data
-
-### Storage Limits
-Most browsers allow ~5–10 MB per domain. Practical guidelines:
-- 100–500 text-only notes = 1–5 MB ✅
-- 20–50 notes with screenshots = 3–10 MB ✅
-- Dozens of high-res images = may hit limit ⚠️
-
-**Pro Tip:** Export backups regularly. If you hit limits, export as JSON, clear storage, and re-import.
-
-### Security Notes
-- ⚠️ Notes are stored in plaintext (no encryption at rest)
-- ⚠️ No password protection built-in
-- ✅ No cloud sync = no data leaves your device
-- ✅ Use device encryption (BitLocker, FileVault, LUKS) for extra safety
+On phones, the layout switches to a bottom tab bar: **📁 Folders → 📝 Notes → ✎ Editor**. Tapping a folder jumps to its notes; tapping a note or **New** jumps to the editor. All other actions (mode picker, settings, themes, import/export) collapse into a **☰** menu.
 
 ---
 
-## Workflow Example: Authorized Pentest
+## Local Storage Limits
 
-1. **Start:** Open AryNotes, switch to **Pentest Mode**
-2. **Recon:** Log passive findings in **Reconnaissance** folder
-3. **Scan:** Log active scans in **Enumeration** folder
-4. **Issues:** Document CVEs and weaknesses in **Vulnerabilities**
-5. **Attack:** Log successful exploits in **Exploitation**
-6. **Escalate:** Record lateral movement in **Post-Exploitation**
-7. **Harvest:** Store access creds in **Credentials** folder
-8. **Collect:** Save screenshots & logs in **Evidence** folder
-9. **Report:** Summarize findings in **Reporting** folder
-10. **Backup:** Click **⇩ Export all** before final report delivery
+Most browsers cap local storage around 5–10MB per site:
+- 100–500 text-only notes ≈ 1–5MB ✅
+- 20–50 notes with a few small attachments ≈ 3–10MB ✅
+- Regularly attaching video/PDFs → use **⚙ Local Folder storage** instead
+
+Export backups (**⇩ Export all**) periodically regardless of which storage mode you use.
+
+---
+
+## Privacy & Security Notes
+
+- No network calls for your notes — everything stays local unless you export/share a file yourself
+- Notes are stored in plaintext (no built-in encryption) — use your OS's disk encryption (BitLocker/FileVault) for extra protection
+- No password lock — anyone with access to your browser profile or connected folder can read your notes
+- Sanitize exported backups before sharing (remove real credentials/client names if needed)
 
 ---
 
 ## FAQ
 
-**Q: Can I use AryNotes for team collaboration?**  
-A: Not directly. It's single-user, offline-first. For teams, export JSON and merge manually.
+**Team collaboration?** Not built-in — export a mode `.zip` or workspace `.json` and share manually.
 
-**Q: Can I sync across my laptop and phone?**  
-A: Not automatically. Export from one device, transfer the JSON file, import on the other.
+**Sync across devices?** Not automatic. Export from one, import on the other — or use Local Folder storage pointed at a synced cloud folder.
 
-**Q: Is there a mobile app?**  
-A: No, but AryNotes is responsive. Open the web version in a mobile browser.
+**Password protection?** Not built-in. Rely on device-level encryption, or keep exported files on an encrypted drive.
 
-**Q: Can I password-protect my notes?**  
-A: Not built-in. Use OS-level encryption on your device, or store exported backups on an encrypted USB.
-
-**Q: What if I accidentally delete a note?**  
-A: Deletions are permanent. Always keep regular backups by exporting JSON.
-
-**Q: Why no cloud sync?**  
-A: Cloud introduces privacy risks for sensitive engagement notes. Staying local and offline is intentional.
-
-**Q: Can I use this for client reporting?**  
-A: Yes. Export individual notes as `.txt` files or copy/paste findings into your report template.
+**Why no cloud sync?** Sensitive engagement notes shouldn't leave your machine by default. Local-first is intentional.
 
 ---
 
 ## Browser Compatibility
 
-AryNotes works on all modern browsers:
-- Chrome/Chromium (v90+)
-- Firefox (v88+)
-- Safari (v14+)
-- Edge (v90+)
-
-Requires `localStorage` support (enabled by default on all modern browsers).
+Chrome, Edge, Brave, Firefox, Safari (modern versions). Local Folder storage specifically needs a Chromium browser.
 
 ---
 
-## Best Practices
+## Disclaimer
 
-1. **Export Regularly** — Don't rely solely on browser storage
-2. **Sanitize Before Sharing** — Remove credentials or customer names from exported backups
-3. **Use Encrypted Storage** — Keep exported JSON files on an encrypted drive
-4. **Separate Profiles** — Use different browser profiles for different clients (if needed)
-5. **Clear Selectively** — Clear only cookies, not all browser data (preserves notes)
-6. **Avoid Public WiFi** — Don't open sensitive notes on untrusted networks
+Use AryNotes only for authorized penetration testing, bug bounty programs you're enrolled in, personal study, or note-taking on your own systems. The creator assumes no liability for misuse or data loss — keep backups.
 
 ---
 
-## Privacy & Disclaimer
-
-**Use AryNotes only for:**
-- ✅ Authorized penetration testing engagements
-- ✅ Personal study and learning
-- ✅ Secure note-taking on your own systems
-
-**Do not use for:**
-- ❌ Unauthorized access to systems
-- ❌ Illegal or unethical activities
-
-The creator assumes no liability for misuse or data loss. Always maintain encrypted backups of critical notes and follow responsible disclosure practices.
-
----
-
-**AryNotes** — Keep your findings safe, local, and organized.  
-Made by **Aryan Giri** for the security research community.  
+**AryNotes** — Made by **Aryan Giri**.
 Visit: https://giriaryan694-a11y.github.io/AryNotes/
