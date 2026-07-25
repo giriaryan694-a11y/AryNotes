@@ -1674,7 +1674,7 @@
       sel.value = currentFolderId !== 'ALL' && folders.find(f=>f.id===currentFolderId) ? currentFolderId : folders[0].id;
     }
     document.getElementById('deleteBtn').disabled = true;
-    setPreview(false);
+    setPreview(previewMode);
     updateLineNumbers();
     syncPinButton();
   }
@@ -1692,7 +1692,7 @@
       `Created ${fmtDate(n.createdAt)} · Updated ${fmtDate(n.updatedAt)}`;
     document.getElementById('deleteBtn').disabled = false;
     renderNotes();
-    setPreview(false);
+    setPreview(previewMode);
     updateLineNumbers();
     syncPinButton();
   }
