@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AryNotes — Engagement Notebook</title>
+
+<!-- PWA: manifest + icons + platform meta -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" type="image/x-icon" href="icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AryNotes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="AryNotes">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
@@ -2134,6 +2148,16 @@ ${content}
   tryReconnectFolderSilently();
   initMobileViewIfNeeded();
 })();
+
+// Register the service worker for offline support + PWA installability.
+// Registered outside the main IIFE so a failure here never blocks the app.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      console.warn('AryNotes: service worker registration failed', err);
+    });
+  });
+}
 </script>
 </body>
 </html>
