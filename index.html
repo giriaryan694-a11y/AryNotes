@@ -183,6 +183,17 @@
   .folder-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .folder-tag{font-family:var(--mono); font-size:9px; color:var(--text-dim); border:1px solid var(--border); border-radius:3px; padding:0 4px;}
   .folder-count{font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  .folder-item{position:relative; min-width:0;}
+  .folder-item .add-child-folder{
+    border:1px solid transparent; background:transparent; color:var(--text-dim); padding:1px 4px;
+    font-size:12px; line-height:1.4; flex-shrink:0; opacity:.65;
+  }
+  .folder-item:hover .add-child-folder,.folder-item .add-child-folder:focus{opacity:1; border-color:var(--border);}
+  .folder-item .add-child-folder:hover{color:var(--accent-2); border-color:var(--accent-2);}
+  .folder-item .folder-name{min-width:0;}
+  .folder-item.child-folder{border-left:2px solid var(--border);}
+  .folder-item .folder-expand-mark{font-family:var(--mono); font-size:10px; color:var(--text-dim); flex-shrink:0; cursor:pointer; min-width:11px; text-align:center;}
+  .folder-item .folder-expand-mark:hover{color:var(--accent); }
   .drag-handle{cursor:grab; color:var(--text-dim); font-size:13px; flex-shrink:0; padding:0 2px; user-select:none;}
   .drag-handle:active{cursor:grabbing;}
   .pin-btn{
@@ -416,6 +427,8 @@
     button{padding:8px 12px; font-size:13.5px;}
     .note-card{padding:12px;}
     .folder-item{padding:11px 8px;}
+    .folder-item .add-child-folder{opacity:1; border-color:var(--border); padding:4px 7px;}
+    .folder-item .del-folder{display:inline; padding:3px 5px;}
   }
 </style>
 </head>
@@ -496,6 +509,7 @@
       </span>
     </div>
     <div class="mode-hint" id="modeHint"></div>
+    <div class="mode-hint">＋ on a folder creates a nested subfolder. Use the main ＋ for a top-level folder.</div>
     <button class="tiny-toggle" id="hideDefaultNotesBtn"></button>
     <div class="pinned-section-label" id="folderPinnedLabel" style="display:none;">📌 Pinned</div>
     <div class="folder-list-pinned" id="folderListPinned"></div>
@@ -581,35 +595,165 @@
     { id:'pentest', name:'Pentest Mode', builtIn:true,
       blurb:'Standard folders for authorized penetration test engagements.',
       folders: [
-        {name:'Reconnaissance', color:'#3fa796'},
-        {name:'Enumeration', color:'#4c8bf5'},
-        {name:'Vulnerabilities', color:'#e0a458'},
-        {name:'Exploitation', color:'#d9534f'},
-        {name:'Post-Exploitation', color:'#a86ee0'},
-        {name:'Credentials', color:'#e0c458'},
-        {name:'Evidence', color:'#5cc98b'},
-        {name:'Reporting', color:'#8492a6'},
+        {name:'Reconnaissance', color:'#3fa796', children:[
+          {name:'Scope & Rules of Engagement', color:'#3fa796'},
+          {name:'Host Discovery', color:'#3fa796'},
+          {name:'DNS & Subdomains', color:'#3fa796'},
+          {name:'Virtual Host (VHost) Discovery', color:'#3fa796'},
+          {name:'Web Surface & Technology Fingerprinting', color:'#3fa796'},
+          {name:'Certificate Transparency & OSINT', color:'#3fa796'},
+          {name:'Attack Surface Inventory', color:'#3fa796'},
+        ], note:`# Reconnaissance Coverage Checklist
+
+Use this as a checkpoint, not a command dump. Mark each item **DONE**, **N/A**, or **TODO** and record why when skipping something.
+
+## Scope and discovery
+- [ ] Confirm target scope, exclusions, rate limits, and permitted techniques.
+- [ ] Identify reachable hosts and exposed TCP/UDP services where relevant.
+- [ ] Record DNS records, discovered subdomains, certificate names, and related in-scope assets.
+
+## Web surface
+- [ ] Visit HTTP/HTTPS services; record status codes, redirects, titles, headers, TLS details, and technology clues.
+- [ ] Check page source, linked JavaScript, robots.txt, sitemap.xml, and publicly exposed documentation.
+- [ ] **Virtual hosts:** test plausible Host-header names derived from scope, DNS, certificates, and app clues; compare responses against a baseline and verify that any hit is genuinely distinct.
+- [ ] Track discovered hostnames separately from path-based content and resolve each finding back to scope.
+
+## Reassessment
+- [ ] After every new hostname, port, technology, or application clue, ask which discovery method it makes relevant.
+- [ ] Record the command/tool, key output, timestamp, and next question. Avoid treating a scanner's result as verified evidence.
+
+**Reminder:** a website on an IP does not rule out name-based virtual hosts. If HTTP is present and hostnames are plausible, explicitly consider VHost enumeration.`},
+        {name:'Enumeration', color:'#4c8bf5', children:[
+          {name:'HTTP & HTTPS', color:'#4c8bf5'},
+          {name:'Directories, Files & Content', color:'#4c8bf5'},
+          {name:'Parameters, Routes & APIs', color:'#4c8bf5'},
+          {name:'SMB & Windows', color:'#4c8bf5'},
+          {name:'LDAP & Active Directory', color:'#4c8bf5'},
+          {name:'SSH, FTP & Other Remote Services', color:'#4c8bf5'},
+          {name:'Databases & Data Stores', color:'#4c8bf5'},
+          {name:'SNMP, RPC & Network Services', color:'#4c8bf5'},
+          {name:'Service-Specific Checks', color:'#4c8bf5'},
+          {name:'Credentials & Authentication Surfaces', color:'#4c8bf5'},
+        ], note:`# Enumeration Coverage Checklist
+
+For each discovered service, choose the relevant branch instead of blindly running every tool. Mark each area **DONE**, **N/A**, or **TODO**.
+
+## HTTP / HTTPS
+- [ ] Enumerate directories, files, backup/config artifacts, and content with an appropriate wordlist.
+- [ ] Check alternate virtual hosts and compare response fingerprints where name-based routing may exist.
+- [ ] Inspect routes, parameters, HTTP methods, forms, API endpoints, OpenAPI/Swagger docs, and GraphQL if present.
+- [ ] Review authentication boundaries, session behavior, and object/function-level access control in scope.
+
+## Network services
+- [ ] Identify the exact service and version; enumerate service-specific metadata and safe read-only functionality.
+- [ ] For SMB, check shares and permitted listing; for LDAP/AD, map exposed naming and directory information where allowed.
+- [ ] For DNS, FTP, SSH, SNMP, RPC/NFS, databases, and other discovered services, use the matching protocol-specific checks only when applicable.
+- [ ] Check for default or exposed configuration only within engagement rules; do not assume a port proves a service identity.
+
+## Close the loop
+- [ ] Validate interesting responses manually and record evidence.
+- [ ] Convert every new hostname, path, credential, service, or technology into a follow-up question.
+- [ ] Revisit earlier assumptions when new evidence changes the target map.`},
+        {name:'Vulnerabilities', color:'#e0a458', children:[
+          {name:'Version & Patch Review', color:'#e0a458'},
+          {name:'Misconfiguration', color:'#e0a458'},
+          {name:'Access Control', color:'#e0a458'},
+          {name:'Web & API Findings', color:'#e0a458'},
+        ]},
+        {name:'Exploitation', color:'#d9534f', children:[
+          {name:'Initial Access', color:'#d9534f'},
+          {name:'Proof of Concept', color:'#d9534f'},
+          {name:'Impact Validation', color:'#d9534f'},
+        ]},
+        {name:'Post-Exploitation', color:'#a86ee0', children:[
+          {name:'Privilege Escalation', color:'#a86ee0'},
+          {name:'Local Enumeration', color:'#a86ee0'},
+          {name:'Lateral Movement (In Scope)', color:'#a86ee0'},
+          {name:'Cleanup & Validation', color:'#a86ee0'},
+        ]},
+        {name:'Credentials', color:'#e0c458', children:[
+          {name:'Discovered Credentials', color:'#e0c458'},
+          {name:'Password Reuse Checks', color:'#e0c458'},
+          {name:'Secrets & Tokens', color:'#e0c458'},
+        ]},
+        {name:'Evidence', color:'#5cc98b', children:[
+          {name:'Screenshots & Output', color:'#5cc98b'},
+          {name:'Reproduction Steps', color:'#5cc98b'},
+          {name:'Timelines & Notes', color:'#5cc98b'},
+        ]},
+        {name:'Reporting', color:'#8492a6', children:[
+          {name:'Executive Summary', color:'#8492a6'},
+          {name:'Technical Findings', color:'#8492a6'},
+          {name:'Remediation & Retest', color:'#8492a6'},
+        ]},
       ]},
     { id:'bugbounty', name:'Bug Bounty Mode', builtIn:true,
       blurb:'Folders tuned for in-scope bug bounty hunting.',
       folders: [
-        {name:'Scope & Program Rules', color:'#4c8bf5'},
-        {name:'Recon', color:'#3fa796'},
-        {name:'Asset & Subdomain Enum', color:'#5cc98b'},
-        {name:'Vulnerabilities', color:'#e0a458'},
-        {name:'Proof of Concept', color:'#d9534f'},
+        {name:'Scope & Program Rules', color:'#4c8bf5', children:[
+          {name:'In-Scope Assets', color:'#4c8bf5'},
+          {name:'Out-of-Scope & Restrictions', color:'#4c8bf5'},
+          {name:'Rate Limits & Safe Testing', color:'#4c8bf5'},
+        ]},
+        {name:'Recon', color:'#3fa796', children:[
+          {name:'Technology Fingerprinting', color:'#3fa796'},
+          {name:'Virtual Hosts', color:'#3fa796'},
+          {name:'Content & Route Discovery', color:'#3fa796'},
+          {name:'JavaScript & Client-Side Clues', color:'#3fa796'},
+        ]},
+        {name:'Asset & Subdomain Enum', color:'#5cc98b', children:[
+          {name:'Domains & DNS', color:'#5cc98b'},
+          {name:'Subdomains', color:'#5cc98b'},
+          {name:'Live Host Verification', color:'#5cc98b'},
+          {name:'Ports & Services (In Scope)', color:'#5cc98b'},
+        ]},
+        {name:'Vulnerabilities', color:'#e0a458', children:[
+          {name:'Access Control / IDOR', color:'#e0a458'},
+          {name:'Injection', color:'#e0a458'},
+          {name:'Authentication & Sessions', color:'#e0a458'},
+          {name:'Business Logic', color:'#e0a458'},
+          {name:'Client-Side Issues', color:'#e0a458'},
+        ]},
+        {name:'Proof of Concept', color:'#d9534f', children:[
+          {name:'Reproduction Steps', color:'#d9534f'},
+          {name:'Impact Evidence', color:'#d9534f'},
+          {name:'Safe Validation Notes', color:'#d9534f'},
+        ]},
         {name:'Reports Submitted', color:'#a86ee0'},
         {name:'Triage & Payouts', color:'#e0c458'},
       ]},
     { id:'osint', name:'OSINT Mode', builtIn:true,
       blurb:'Folders for open-source intelligence gathering.',
       folders: [
-        {name:'Target Profile', color:'#4c8bf5'},
-        {name:'Social Media', color:'#3fa796'},
-        {name:'Public Records', color:'#e0c458'},
-        {name:'Infrastructure & DNS', color:'#5cc98b'},
-        {name:'Leaks & Breach Data', color:'#d9534f'},
-        {name:'Documentation', color:'#8492a6'},
+        {name:'Target Profile', color:'#4c8bf5', children:[
+          {name:'Identity & Affiliations', color:'#4c8bf5'},
+          {name:'Timeline & Key Events', color:'#4c8bf5'},
+        ]},
+        {name:'Social Media', color:'#3fa796', children:[
+          {name:'Profiles & Handles', color:'#3fa796'},
+          {name:'Posts & Public Metadata', color:'#3fa796'},
+          {name:'Cross-Platform Correlation', color:'#3fa796'},
+        ]},
+        {name:'Public Records', color:'#e0c458', children:[
+          {name:'Corporate & Legal Records', color:'#e0c458'},
+          {name:'Public Documents', color:'#e0c458'},
+        ]},
+        {name:'Infrastructure & DNS', color:'#5cc98b', children:[
+          {name:'Domains & Subdomains', color:'#5cc98b'},
+          {name:'DNS Records & History', color:'#5cc98b'},
+          {name:'Certificates & CT Logs', color:'#5cc98b'},
+          {name:'Hosting, ASN & IP Context', color:'#5cc98b'},
+          {name:'Web Services & VHosts', color:'#5cc98b'},
+        ]},
+        {name:'Leaks & Breach Data', color:'#d9534f', children:[
+          {name:'Publicly Reported Exposure', color:'#d9534f'},
+          {name:'Credential Exposure Indicators', color:'#d9534f'},
+        ]},
+        {name:'Documentation', color:'#8492a6', children:[
+          {name:'Sources & URLs', color:'#8492a6'},
+          {name:'Evidence & Confidence', color:'#8492a6'},
+          {name:'Findings & Timeline', color:'#8492a6'},
+        ]},
       ]},
     { id:'offsecplan', name:'OffSec Plan Mode', builtIn:true,
       blurb:'Formal planning documents for authorized offensive security engagements.',
@@ -728,7 +872,12 @@
 - Retesting / verification process after remediation
 
 *Delete this note once you've replaced it with your actual Reporting Plan — or use ⚙ to hide starter notes.*`},
-        {name:'Intelligence Collection Plan', color:'#4c8bf5', note:
+        {name:'Intelligence Collection Plan', color:'#4c8bf5', children:[
+          {name:'Priority Intelligence Requirements', color:'#4c8bf5'},
+          {name:'Domains & Infrastructure', color:'#4c8bf5'},
+          {name:'Technology & Services', color:'#4c8bf5'},
+          {name:'Permitted Sources & Boundaries', color:'#4c8bf5'},
+        ], note:
 `# Intelligence Collection Plan
 
 **What this is:** what information needs to be gathered during reconnaissance, and why — turning "recon" from an open-ended activity into a targeted collection effort.
@@ -759,7 +908,12 @@
 - Insurance / liability coverage reference, if applicable
 
 *Delete this note once you've replaced it with your actual Risk Assessment — or use ⚙ to hide starter notes.*`},
-        {name:'Kill Chain / Attack Path', color:'#d9534f', note:
+        {name:'Kill Chain / Attack Path', color:'#d9534f', children:[
+          {name:'Initial Access Paths', color:'#d9534f'},
+          {name:'Privilege Escalation Paths', color:'#d9534f'},
+          {name:'Lateral Movement & Pivot Points', color:'#d9534f'},
+          {name:'Objectives & Validation', color:'#d9534f'},
+        ], note:
 `# Kill Chain / Attack Path
 
 **What this is:** a mapped-out progression of the intended attack — e.g. Initial Access → Execution → Privilege Escalation → Lateral Movement → Objectives — tailored to this specific engagement.
@@ -816,6 +970,7 @@
     state.folders.forEach(f=>{
       if(f.pinned === undefined) f.pinned = false;
       if(f.order === undefined) f.order = fc++;
+      if(f.parentId === undefined) f.parentId = null;
     });
     let nc = 1;
     state.notes.forEach(n=>{
@@ -1008,24 +1163,32 @@
 
   function seedModeFolders(m){
     if(!m || !m.folders || !m.folders.length) return;
-    m.folders.forEach(tf=>{
-      let folder = state.folders.find(f => f.modeId===m.id && f.name.toLowerCase()===tf.name.toLowerCase());
-      if(!folder){
-        folder = {id: uid('f'), name: tf.name, color: tf.color || nextColor(), modeId: m.id, preset:true, pinned:false, order: nextOrderVal()};
-        state.folders.push(folder);
-      }
-      if(tf.note){
-        const hasNotes = state.notes.some(n => n.folderId === folder.id);
-        if(!hasNotes){
-          const now = Date.now();
-          state.notes.push({
-            id: uid('n'), title: 'ℹ️ About: ' + tf.name, content: tf.note, tags: ['starter'],
-            folderId: folder.id, createdAt: now, updatedAt: now,
-            pinned: true, order: nextOrderVal(), isDefaultNote: true
-          });
+    function seedLevel(definitions, parentId){
+      definitions.forEach(tf=>{
+        let folder = state.folders.find(f => f.modeId===m.id &&
+          (f.parentId || null)===(parentId || null) && f.name.toLowerCase()===tf.name.toLowerCase());
+        if(!folder){
+          folder = {id: uid('f'), name: tf.name, color: tf.color || nextColor(), modeId: m.id,
+            parentId: parentId || null, preset:true, pinned:false, order: nextOrderVal()};
+          state.folders.push(folder);
+        } else if(folder.parentId === undefined){
+          folder.parentId = parentId || null;
         }
-      }
-    });
+        if(tf.note){
+          const hasNotes = state.notes.some(n => n.folderId === folder.id);
+          if(!hasNotes){
+            const now = Date.now();
+            state.notes.push({
+              id: uid('n'), title: 'ℹ️ About: ' + tf.name, content: tf.note, tags: ['starter'],
+              folderId: folder.id, createdAt: now, updatedAt: now,
+              pinned: true, order: nextOrderVal(), isDefaultNote: true
+            });
+          }
+        }
+        if(Array.isArray(tf.children) && tf.children.length) seedLevel(tf.children, folder.id);
+      });
+    }
+    seedLevel(m.folders, null);
   }
 
   function applyMode(id){
@@ -1045,6 +1208,43 @@
 
   function visibleFolders(){
     return state.folders.filter(f => f.modeId === state.activeModeId);
+  }
+  function folderChildren(parentId, list=visibleFolders()){
+    const ids = new Set(list.map(f=>f.id));
+    return list.filter(f=> parentId
+      ? f.parentId===parentId
+      : (!f.parentId || !ids.has(f.parentId)))
+      .sort((a,b)=>(a.order||0)-(b.order||0));
+  }
+  function flattenFolderTree(list=visibleFolders()){
+    const result=[];
+    function walk(parentId, depth){
+      folderChildren(parentId,list).forEach(f=>{
+        result.push({folder:f, depth});
+        walk(f.id, depth+1);
+      });
+    }
+    walk(null,0);
+    // Keep legacy/orphaned folders visible if their parent was deleted or came from an old backup.
+    list.filter(f=>!result.some(row=>row.folder.id===f.id)).forEach(f=>result.push({folder:f,depth:0}));
+    return result;
+  }
+  function folderPathNames(folder){
+    const list=visibleFolders();
+    const names=[]; let cursor=folder; const seen=new Set();
+    while(cursor && !seen.has(cursor.id)){
+      seen.add(cursor.id); names.unshift(cursor.name);
+      cursor=list.find(f=>f.id===cursor.parentId);
+    }
+    return names;
+  }
+  function isFolderInSubtree(folderId, rootId){
+    let cursor=folderById(folderId); const seen=new Set();
+    while(cursor && !seen.has(cursor.id)){
+      if(cursor.id===rootId) return true;
+      seen.add(cursor.id); cursor=folderById(cursor.parentId);
+    }
+    return false;
   }
 
   // ---------- Dropdown open/close plumbing ----------
@@ -1125,13 +1325,14 @@
 
   function modeOptionEl(m){
     const count = state.folders.filter(f=>f.modeId===m.id).length;
+    const rootCount = state.folders.filter(f=>f.modeId===m.id && !f.parentId).length;
     const el = document.createElement('div');
     el.className = 'mode-option' + (m.id===state.activeModeId ? ' active' : '');
     el.innerHTML = `
       <span class="m-dot" style="background:${m.builtIn ? 'var(--accent-2)' : 'var(--accent)'}"></span>
       <span class="m-info">
         <div class="m-name${m.id===state.activeModeId ? ' active-check':''}">${escapeHtml(m.name)}</div>
-        <div class="m-blurb">${escapeHtml(m.blurb || '')} · ${count} folder${count===1?'':'s'}</div>
+        <div class="m-blurb">${escapeHtml(m.blurb || '')} · ${count} folders (${rootCount} top-level)</div>
       </span>
       ${!m.builtIn ? '<button class="m-del" title="Delete custom mode">✕</button>' : ''}
     `;
@@ -1203,9 +1404,17 @@
       let name = data.name;
       const existingNames = allModes().map(m=>m.name.toLowerCase());
       if(existingNames.includes(name.toLowerCase())) name = name + ' (imported)';
-      const m = { id: uid('m'), name, builtIn:false,
-        blurb: data.blurb || 'Imported mode',
-        folders: data.folders.map(f=>({name:f.name, color:f.color || nextColor()})) };
+      const sourceFolders = data.folders.map(f=>({name:f.name, color:f.color || nextColor(), path:Array.isArray(f.path) ? f.path : null, parentPath:Array.isArray(f.parentPath) ? f.parentPath : null}));
+      const folders = sourceFolders.map(f=>({name:f.name, color:f.color,
+        ...(f.path && f.path.length>1 ? {parentPath:f.path.slice(0,-1)} : (f.parentPath ? {parentPath:f.parentPath} : {}))}));
+      // Resolve path-based parent markers into a nested definition tree for normal mode seeding.
+      const roots=[]; const nodes=new Map();
+      folders.forEach(f=>{ const node={name:f.name,color:f.color,children:[]}; const path=(f.parentPath||[]).concat(f.name); nodes.set(path.join('\u0000'),node); });
+      folders.forEach(f=>{ const path=(f.parentPath||[]).concat(f.name); const node=nodes.get(path.join('\u0000'));
+        if(f.parentPath && f.parentPath.length){ const parent=nodes.get(f.parentPath.join('\u0000')); if(parent) parent.children.push(node); else roots.push(node); }
+        else roots.push(node);
+      });
+      const m = { id: uid('m'), name, builtIn:false, blurb: data.blurb || 'Imported mode', folders: roots };
       state.customModes.push(m);
       persist();
       applyMode(m.id);
@@ -1217,7 +1426,7 @@
 
   document.getElementById('exportModeJsonBtn').addEventListener('click', ()=>{
     const m = currentMode();
-    const folders = visibleFolders().map(f=>({name:f.name, color:f.color}));
+    const folders = flattenFolderTree().map(({folder})=>({name:folder.name, color:folder.color, path:folderPathNames(folder)}));
     const payload = JSON.stringify({ type:'arynotes-mode', name:m.name, blurb:m.blurb, folders }, null, 2);
     downloadFile('arynotes-mode-' + slug(m.name) + '.json', payload, 'application/json');
   });
@@ -1264,14 +1473,16 @@
       return;
     }
     const m = currentMode();
-    const folders = visibleFolders();
+    const folderRows = flattenFolderTree();
     const zip = new JSZip();
     const root = zip.folder(sanitizeFilename(m.name) || 'mode');
     const metaFolders = [];
 
-    folders.forEach(f=>{
-      const folderZip = root.folder(sanitizeFilename(f.name) || 'folder');
-      metaFolders.push({name:f.name, color:f.color});
+    folderRows.forEach(({folder:f})=>{
+      const pathParts = folderPathNames(f).map(part=>sanitizeFilename(part) || 'folder');
+      const path = pathParts.join('/');
+      const folderZip = root.folder(path);
+      metaFolders.push({name:f.name, color:f.color, path});
       const notes = state.notes.filter(n=>n.folderId===f.id);
       notes.forEach(n=>{
         let content = extractAttachmentsForZip(n.content || '', folderZip, n.title);
@@ -1298,9 +1509,10 @@
     csv:'text/csv', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   };
 
-  async function reembedAttachmentsFromZip(content, zip, rootPrefix, folderName){
+  async function reembedAttachmentsFromZip(content, zip, rootPrefix, folderPath){
+    const normalizedFolderPath = Array.isArray(folderPath) ? folderPath.join('/') : String(folderPath || '');
     async function fetchB64(file){
-      const entry = zip.file(rootPrefix + folderName + '/' + file);
+      const entry = zip.file(rootPrefix + normalizedFolderPath + '/' + file);
       return entry ? await entry.async('base64') : null;
     }
     async function replaceAllAsync(regex, fn){
@@ -1360,11 +1572,17 @@
       const newMode = { id: uid('m'), name, builtIn:false, blurb: meta.blurb || 'Imported mode (zip)', folders: [] };
       state.customModes.push(newMode);
 
-      const folderNameToId = {};
-      (meta.folders||[]).forEach(f=>{
+      const folderPathToId = new Map();
+      const metaFolders = (meta.folders||[]).map(f=>{
+        const pathParts = (f.path ? String(f.path).split('/') : [sanitizeFilename(f.name) || 'folder']).filter(Boolean);
+        return {name:f.name || pathParts[pathParts.length-1], color:f.color, pathParts};
+      }).sort((a,b)=>a.pathParts.length-b.pathParts.length);
+      metaFolders.forEach(f=>{
+        const parentPath = f.pathParts.slice(0,-1);
+        const parentId = parentPath.length ? folderPathToId.get(parentPath.join('/')) || null : null;
         const fid = uid('f');
-        folderNameToId[f.name] = fid;
-        state.folders.push({id:fid, name:f.name, color:f.color || nextColor(), modeId:newMode.id, preset:true});
+        folderPathToId.set(f.pathParts.join('/'), fid);
+        state.folders.push({id:fid, name:f.name, color:f.color || nextColor(), modeId:newMode.id, parentId, preset:true, pinned:false, order:nextOrderVal()});
       });
 
       const mdEntries = [];
@@ -1372,15 +1590,18 @@
 
       for(const {path, entry} of mdEntries){
         const rel = path.slice(rootPrefix.length);
-        const parts = rel.split('/');
+        const parts = rel.split('/').filter(Boolean);
         if(parts.length < 2) continue;
-        const folderName = parts[0];
-        const fileName = parts.slice(1).join('/');
-        let folderId = folderNameToId[folderName];
+        const fileName = parts.pop();
+        const folderPathParts = parts;
+        const folderPath = folderPathParts.join('/');
+        let folderId = folderPathToId.get(folderPath);
         if(!folderId){
+          const parentPath = folderPathParts.slice(0,-1).join('/');
+          const parentId = folderPathParts.length>1 ? folderPathToId.get(parentPath) || null : null;
           folderId = uid('f');
-          folderNameToId[folderName] = folderId;
-          state.folders.push({id:folderId, name:folderName, color:nextColor(), modeId:newMode.id, preset:false});
+          folderPathToId.set(folderPath, folderId);
+          state.folders.push({id:folderId, name:folderPathParts[folderPathParts.length-1], color:nextColor(), modeId:newMode.id, parentId, preset:false, pinned:false, order:nextOrderVal()});
         }
 
         let text = await entry.async('string');
@@ -1389,7 +1610,7 @@
         const headerMatch = text.match(/^Title:.*\n(?:Tags:.*\n)?(?:Created:.*\n)?(?:Updated:.*\n)?\n([\s\S]*)$/);
         if(headerMatch) content = headerMatch[1];
 
-        content = await reembedAttachmentsFromZip(content, zip, rootPrefix, folderName);
+        content = await reembedAttachmentsFromZip(content, zip, rootPrefix, folderPath);
 
         const now = Date.now();
         state.notes.push({ id: uid('n'), title, content, tags:['imported'], folderId, createdAt: now, updatedAt: now });
@@ -1443,7 +1664,8 @@
     pinnedWrap.innerHTML = ''; restWrap.innerHTML = '';
 
     const folders = visibleFolders();
-    const {pinned, rest} = splitPinned(folders);
+    const roots = folderChildren(null, folders);
+    const {pinned, rest} = splitPinned(roots);
 
     if(folders.length === 0){
       restWrap.innerHTML = `<div class="empty-hint">No folders yet.<br>Tap ＋ to create one, or pick a mode with a ready-made set.</div>`;
@@ -1451,50 +1673,71 @@
     } else {
       pinnedLabel.style.display = pinned.length ? '' : 'none';
       restLabel.style.display = (pinned.length && rest.length) ? '' : 'none';
-
-      const pinnedIds = pinned.map(f=>f.id);
-      const restIds = rest.map(f=>f.id);
-
-      pinned.forEach(f=> pinnedWrap.appendChild(folderItemEl(f, 'pinned', pinnedIds)));
-      rest.forEach(f=> restWrap.appendChild(folderItemEl(f, 'rest', restIds)));
+      pinned.forEach(f=> appendFolderBranch(pinnedWrap, f, 0));
+      rest.forEach(f=> appendFolderBranch(restWrap, f, 0));
     }
 
     document.getElementById('allNotesBtn').classList.toggle('active', currentFolderId==='ALL');
 
     const sel = document.getElementById('folderSelect');
-    const allForSelect = [...pinned, ...rest];
+    const allForSelect = flattenFolderTree(folders);
     if(allForSelect.length === 0){
       sel.innerHTML = `<option value="" disabled selected>No folders — create one first</option>`;
     } else {
-      sel.innerHTML = allForSelect.map(f=>`<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');
+      sel.innerHTML = allForSelect.map(({folder:f,depth})=>`<option value="${f.id}">${'　'.repeat(depth)}${depth ? '↳ ' : ''}${escapeHtml(f.name)}</option>`).join('');
+      if(currentFolderId !== 'ALL' && folders.some(f=>f.id===currentFolderId)) sel.value=currentFolderId;
     }
   }
 
-  function folderItemEl(f, group, groupIds){
+  function appendFolderBranch(container, folder, depth){
+    const list=visibleFolders();
+    const validParent = folder.parentId && list.some(f=>f.id===folder.parentId) ? folder.parentId : null;
+    const siblings = validParent ? folderChildren(validParent, list) : folderChildren(null, list).filter(s=>!!s.pinned===!!folder.pinned);
+    const group = validParent ? 'parent:'+validParent : (folder.pinned ? 'root:pinned' : 'root:rest');
+    container.appendChild(folderItemEl(folder, group, siblings.map(f=>f.id), depth));
+    if(!folder.collapsed) folderChildren(folder.id, list).forEach(child=>appendFolderBranch(container, child, depth+1));
+  }
+
+  function folderItemEl(f, group, groupIds, depth=0){
     const count = state.notes.filter(n=>n.folderId===f.id).length;
+    const hasChildren = folderChildren(f.id).length > 0;
     const el = document.createElement('div');
-    el.className = 'folder-item' + (currentFolderId===f.id ? ' active':'');
+    el.className = 'folder-item' + (currentFolderId===f.id ? ' active':'') + (depth ? ' child-folder':'');
+    el.style.paddingLeft = (8 + depth * 14) + 'px';
     el.innerHTML = `
       ${foldersEditMode ? '<span class="drag-handle">⋮⋮</span>' : ''}
+      <span class="folder-expand-mark" title="${hasChildren ? (f.collapsed ? 'Expand subfolders' : 'Collapse subfolders') : 'Folder'}" role="${hasChildren ? 'button' : 'img'}" aria-label="${hasChildren ? (f.collapsed ? 'Expand subfolders' : 'Collapse subfolders') : 'Folder'}">${hasChildren ? (f.collapsed ? '▸' : '▾') : '·'}</span>
       <button class="pin-btn${f.pinned ? ' pinned':''}" title="${f.pinned ? 'Unpin' : 'Pin to top'}">${f.pinned ? '📌' : '📍'}</button>
-      <span class="folder-dot" style="background:${f.color}"></span>
-      <span class="folder-name">${escapeHtml(f.name)}</span>
+      <span class="folder-dot" style="background:${f.color || 'var(--accent-2)'}"></span>
+      <span class="folder-name" title="${escapeHtml(folderPathNames(f).join(' / '))}">${escapeHtml(f.name)}</span>
       ${f.preset ? '<span class="folder-tag">preset</span>' : ''}
-      <span class="folder-count">${count}</span>
-      <button class="del-folder" title="Delete folder">✕</button>
+      <span class="folder-count" title="Notes directly in this folder">${count}</span>
+      <button class="add-child-folder" title="Create subfolder inside ${escapeHtml(f.name)}" aria-label="Create subfolder">＋</button>
+      <button class="del-folder" title="Delete folder and its subfolders">✕</button>
     `;
     el.addEventListener('click', (e)=>{
       if(foldersEditMode) return;
-      if(e.target.classList.contains('del-folder') || e.target.classList.contains('pin-btn')) return;
+      if(e.target.classList.contains('del-folder') || e.target.classList.contains('pin-btn') || e.target.classList.contains('add-child-folder') || e.target.classList.contains('folder-expand-mark')) return;
       currentFolderId = f.id;
       renderAll();
       if(isMobile()) setMobileView('notes');
+    });
+    el.querySelector('.folder-expand-mark').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(!hasChildren) return;
+      f.collapsed = !f.collapsed;
+      persist();
+      renderFolders();
     });
     el.querySelector('.pin-btn').addEventListener('click', (e)=>{
       e.stopPropagation();
       f.pinned = !f.pinned;
       persist();
       renderFolders();
+    });
+    el.querySelector('.add-child-folder').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      createFolder(f.id);
     });
     el.querySelector('.del-folder').addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -1526,24 +1769,33 @@
     if(isMobile()) setMobileView('notes');
   });
 
-  document.getElementById('addFolderBtn').addEventListener('click', ()=>{
-    const name = prompt('New folder name (e.g. "Client X — Web App" or "Chapter 3 Notes"):');
+  document.getElementById('addFolderBtn').addEventListener('click', ()=>createFolder(null));
+
+  function createFolder(parentId){
+    const parent = parentId ? folderById(parentId) : null;
+    if(parentId && (!parent || parent.modeId!==state.activeModeId)) return;
+    const promptText = parent ? `New subfolder inside "${parent.name}" (e.g. "VHost checks"): ` : 'New folder name (e.g. "Client X — Web App" or "Chapter 3 Notes"): ';
+    const name = prompt(promptText);
     if(!name || !name.trim()) return;
-    const f = {id: uid('f'), name: name.trim(), color: nextColor(), modeId: state.activeModeId, preset:false, pinned:false, order: nextOrderVal()};
+    if(parent) parent.collapsed = false;
+    const f = {id: uid('f'), name: name.trim(), color: parent ? parent.color : nextColor(), modeId: state.activeModeId,
+      parentId: parent ? parent.id : null, preset:false, pinned:false, collapsed:false, order: nextOrderVal()};
     state.folders.push(f);
     currentFolderId = f.id;
     persist();
     renderAll();
-  });
+  }
 
   function deleteFolder(id){
     const f = folderById(id);
     if(!f) return;
-    const count = state.notes.filter(n=>n.folderId===id).length;
-    if(!confirm(`Delete folder "${f.name}"? ${count} note(s) inside will also be deleted.`)) return;
-    state.notes = state.notes.filter(n=>n.folderId!==id);
-    state.folders = state.folders.filter(x=>x.id!==id);
-    if(currentFolderId===id) currentFolderId = 'ALL';
+    const subtreeIds = new Set(visibleFolders().filter(x=>isFolderInSubtree(x.id,id)).map(x=>x.id));
+    const count = state.notes.filter(n=>subtreeIds.has(n.folderId)).length;
+    const folderCount = subtreeIds.size;
+    if(!confirm(`Delete folder "${f.name}" and its ${Math.max(0,folderCount-1)} subfolder(s)? ${count} note(s) across this folder tree will also be deleted.`)) return;
+    state.notes = state.notes.filter(n=>!subtreeIds.has(n.folderId));
+    state.folders = state.folders.filter(x=>!subtreeIds.has(x.id));
+    if(subtreeIds.has(currentFolderId)) currentFolderId = 'ALL';
     if(currentNoteId && !state.notes.find(n=>n.id===currentNoteId)) clearEditor();
     persist();
     renderAll();
@@ -1685,7 +1937,8 @@
     const folders = visibleFolders();
     const sel = document.getElementById('folderSelect');
     if(folders.length){
-      sel.value = currentFolderId !== 'ALL' && folders.find(f=>f.id===currentFolderId) ? currentFolderId : folders[0].id;
+      const flat = flattenFolderTree(folders).map(row=>row.folder);
+      sel.value = currentFolderId !== 'ALL' && folders.find(f=>f.id===currentFolderId) ? currentFolderId : flat[0].id;
     }
     document.getElementById('deleteBtn').disabled = true;
     setPreview(previewMode);
